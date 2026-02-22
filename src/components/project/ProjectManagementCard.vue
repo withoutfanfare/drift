@@ -8,6 +8,7 @@ import { useStatus } from "../../composables/useStatus";
 import { scanEnvFiles, writeProjectBackup } from "../../composables/useTauriCommands";
 import GlassCard from "../ui/GlassCard.vue";
 import BaseButton from "../ui/BaseButton.vue";
+import ConfirmDialog from "../ui/ConfirmDialog.vue";
 import ProjectForm from "./ProjectForm.vue";
 import FileUploadActions from "./FileUploadActions.vue";
 import ManualSetForm from "./ManualSetForm.vue";
@@ -23,6 +24,8 @@ const { loadSampleData, createBaselineSets } = useSampleData();
 const { setStatus } = useStatus();
 const showManualForm = ref(false);
 const scanning = ref(false);
+const settingsExpanded = ref(false);
+const confirmingClear = ref(false);
 
 function onSaveProject(name: string, rootPath: string) {
   if (!name || !rootPath) {
@@ -187,14 +190,32 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
 </script>
 
 <template>
-  <GlassCard>
-    <h2 class="text-[17px] font-semibold text-text-primary mb-4">Project + Env Set Management</h2>
-    <p class="text-sm text-text-secondary mb-4">
-      Keep project records, starter templates, and loaded env sets organised in one place.
-    </p>
+  <!-- Card 1: Project Settings (collapsible) -->
+  <GlassCard padding="p-0">
+    <button
+      class="focus-ring w-full flex items-center gap-2.5 px-5 py-3.5 text-left rounded-[var(--radius-xl)]"
+      @click="settingsExpanded = !settingsExpanded"
+    >
+      <svg class="h-4 w-4 shrink-0 text-text-muted" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="1.8" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" stroke-width="1.8" />
+      </svg>
+      <span class="text-sm font-medium text-text-primary flex-1">Project Settings</span>
+      <span v-if="!settingsExpanded" class="text-xs text-text-muted truncate max-w-[200px]">
+        {{ activeProject?.name ?? "No project" }}
+      </span>
+      <svg
+        class="h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-200"
+        :class="settingsExpanded ? 'rotate-90' : ''"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
 
-    <div>
-      <p class="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">Project setup</p>
+    <div v-if="settingsExpanded" class="px-5 pb-5">
       <ProjectForm
         :active-project="activeProject"
         :scanning="scanning"
@@ -204,29 +225,62 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
         @baseline="onBaseline"
       />
     </div>
+  </GlassCard>
 
-    <div class="mt-4">
-      <p class="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">Set loading</p>
+  <!-- Card 2: Environment Sets (main focus) -->
+  <GlassCard>
+    <div class="flex items-baseline justify-between gap-3 mb-4">
+      <h2 class="text-[17px] font-semibold text-text-primary">Environment Sets</h2>
+      <span v-if="sets.length > 0" class="text-xs text-text-muted">
+        {{ sets.length }} set{{ sets.length !== 1 ? 's' : '' }} loaded
+      </span>
+    </div>
+
+    <!-- Loading actions -->
+    <div class="mb-4">
       <FileUploadActions
         @load-files="onLoadFiles"
         @load-sample="onLoadSample"
-        @clear-sets="onClearSets"
       />
     </div>
 
-    <div class="mt-4 rounded-[var(--radius-md)] border border-border-subtle bg-surface-1/45 p-3">
-      <div class="flex items-center justify-between gap-2">
-        <div>
-          <h3 class="text-sm font-semibold text-text-secondary">Manual set entry</h3>
-          <p class="text-xs text-text-muted mt-0.5">Use this when scan/import is not available.</p>
-        </div>
-        <BaseButton variant="ghost" size="sm" @click="showManualForm = !showManualForm">
-          {{ showManualForm ? "Hide" : "Show" }}
-        </BaseButton>
-      </div>
+    <!-- Set list -->
+    <EnvSetList :sets="sets" @remove="onRemoveSet" />
+
+    <!-- Manual entry (collapsible) -->
+    <div class="mt-4 border-t border-border-subtle pt-3">
+      <button
+        class="focus-ring flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors rounded"
+        @click="showManualForm = !showManualForm"
+      >
+        <svg
+          class="h-3 w-3 transition-transform duration-200"
+          :class="showManualForm ? 'rotate-90' : ''"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Paste .env content manually
+      </button>
       <ManualSetForm v-if="showManualForm" @add-manual="onAddManual" />
     </div>
 
-    <EnvSetList :sets="sets" @remove="onRemoveSet" />
+    <!-- Danger zone -->
+    <div v-if="sets.length > 0" class="mt-4 border-t border-border-subtle pt-3">
+      <BaseButton variant="danger" size="sm" @click="confirmingClear = true">
+        Clear all loaded sets
+      </BaseButton>
+    </div>
+
+    <ConfirmDialog
+      v-if="confirmingClear"
+      title="Clear all loaded sets?"
+      message="This will remove all env sets loaded for the active project in Drift. A backup will be created first. Your .env files are not affected."
+      confirm-label="Clear sets"
+      @confirm="confirmingClear = false; onClearSets()"
+      @cancel="confirmingClear = false"
+    />
   </GlassCard>
 </template>

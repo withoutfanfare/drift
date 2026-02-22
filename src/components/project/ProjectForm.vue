@@ -111,8 +111,7 @@ async function browseForProjectPath() {
       </BaseButton>
     </div>
 
-    <div class="border-t border-border-subtle pt-2">
-      <p class="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">Drift record action</p>
+    <div class="border-t border-border-subtle pt-3">
       <BaseButton variant="danger" size="sm" @click="confirmingDelete = true">
         Remove project from Drift
       </BaseButton>

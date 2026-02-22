@@ -12,19 +12,16 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div>
-    <h3 class="text-sm font-semibold text-text-secondary mt-5 mb-2">Sets in Active Project</h3>
-    <div v-if="sets.length > 0" class="relative">
-      <ul class="max-h-56 overflow-y-auto space-y-0.5">
-        <EnvSetItem
-          v-for="s in sets"
-          :key="s.id"
-          :set="s"
-          @remove="emit('remove', $event)"
-        />
-      </ul>
-      <div v-if="sets.length > 4" class="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-surface-base/80 to-transparent" />
-    </div>
-    <p v-else class="text-sm text-text-muted">No env sets loaded for this project.</p>
+  <ul v-if="sets.length > 0" class="space-y-2">
+    <EnvSetItem
+      v-for="s in sets"
+      :key="s.id"
+      :set="s"
+      @remove="emit('remove', $event)"
+    />
+  </ul>
+  <div v-else class="py-8 text-center">
+    <p class="text-sm text-text-secondary">No environment sets loaded yet.</p>
+    <p class="text-xs text-text-muted mt-1">Scan your project or load .env files to begin.</p>
   </div>
 </template>
