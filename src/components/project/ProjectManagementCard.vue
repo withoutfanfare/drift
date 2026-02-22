@@ -246,9 +246,9 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
   <!-- Card 2: Environment Sets (main focus) -->
   <GlassCard>
     <div class="flex items-baseline justify-between gap-3 mb-4">
-      <h2 class="text-[17px] font-semibold text-text-primary">Environment Sets</h2>
+      <h2 class="text-[17px] font-semibold text-text-primary">.env files</h2>
       <span v-if="sets.length > 0" class="text-xs text-text-muted">
-        {{ sets.length }} set{{ sets.length !== 1 ? 's' : '' }} loaded
+        {{ sets.length }} file{{ sets.length !== 1 ? 's' : '' }} loaded
       </span>
     </div>
 
@@ -281,7 +281,7 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
         >
           <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-        Paste .env content manually
+        Paste .env content
       </button>
       <div v-if="showManualForm" id="manual-entry-panel">
         <ManualSetForm @add-manual="onAddManual" />
@@ -291,15 +291,15 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
     <!-- Danger zone -->
     <div v-if="sets.length > 0" class="mt-4 border-t border-border-subtle pt-3">
       <BaseButton variant="danger" size="sm" @click="confirmingClear = true">
-        Clear all loaded sets
+        Remove all .env files from Drift
       </BaseButton>
     </div>
 
     <ConfirmDialog
       v-if="confirmingClear"
-      title="Clear all loaded sets?"
-      message="This will remove all env sets loaded for the active project in Drift. A backup will be created first. Your .env files are not affected."
-      confirm-label="Clear sets"
+      title="Remove all .env files from Drift?"
+      message="This will remove all .env files loaded for the active project in Drift. A backup will be created first. Your actual .env files are not affected."
+      confirm-label="Remove files"
       @confirm="confirmingClear = false; onClearSets()"
       @cancel="confirmingClear = false"
     />

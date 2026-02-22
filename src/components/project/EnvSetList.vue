@@ -24,8 +24,8 @@ const emit = defineEmits<{
     />
   </ul>
   <div v-else class="py-8 text-center">
-    <p class="text-sm text-text-secondary">No environment sets loaded yet.</p>
-    <p class="text-xs text-text-muted mt-1">Scan your project or load .env files to begin.</p>
+    <p class="text-sm text-text-secondary">No .env files loaded yet.</p>
+    <p class="text-xs text-text-muted mt-1">Scan your project folder or load .env files to begin.</p>
     <div class="flex justify-center gap-2 mt-4">
       <BaseButton variant="tertiary" size="sm" @click="emit('scan')">Scan project</BaseButton>
       <BaseButton variant="primary" size="sm" @click="emit('loadFiles')">Load .env files</BaseButton>

@@ -69,16 +69,16 @@ defineExpose({ selectKey });
 
 <template>
   <div class="mt-5">
-    <h3 class="text-sm font-semibold text-text-secondary mb-3">Inline Drift Editor</h3>
+    <h3 class="text-sm font-semibold text-text-secondary mb-3">Edit a key</h3>
 
     <div class="grid grid-cols-3 gap-3 max-[1120px]:grid-cols-1">
       <BaseSelect v-model="editorKey" label="Key">
         <option v-for="row in analysis" :key="row.key" :value="row.key">{{ row.key }}</option>
       </BaseSelect>
-      <BaseSelect v-model="editorSourceId" label="Source set">
+      <BaseSelect v-model="editorSourceId" label="Copy value from">
         <option v-for="s in sets" :key="s.id" :value="s.id">{{ s.name }} ({{ s.role }})</option>
       </BaseSelect>
-      <BaseSelect v-model="editorTargetId" label="Target set">
+      <BaseSelect v-model="editorTargetId" label="Apply to">
         <option v-for="s in sets" :key="s.id" :value="s.id">{{ s.name }} ({{ s.role }})</option>
       </BaseSelect>
     </div>
@@ -97,9 +97,9 @@ defineExpose({ selectKey });
     </p>
 
     <div class="flex flex-wrap gap-2 mt-3">
-      <BaseButton variant="tertiary" @click="loadSource">Load Value From Source</BaseButton>
-      <BaseButton variant="primary" @click="emit('applyMemory', editorTargetId, editorKey, editorValue)">Apply to Target (In-App)</BaseButton>
-      <BaseButton variant="danger" @click="emit('applyFile', editorTargetId, editorKey, editorValue)">Apply to Target File</BaseButton>
+      <BaseButton variant="tertiary" @click="loadSource">Load value</BaseButton>
+      <BaseButton variant="primary" @click="emit('applyMemory', editorTargetId, editorKey, editorValue)">Update in Drift</BaseButton>
+      <BaseButton variant="danger" @click="emit('applyFile', editorTargetId, editorKey, editorValue)">Write to file</BaseButton>
     </div>
   </div>
 </template>

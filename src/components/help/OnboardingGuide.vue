@@ -45,15 +45,15 @@ const nextAction = computed(() => {
   }
 
   if (!hasSets.value) {
-    return "Load .env sets into this project.";
+    return "Load .env files into this project.";
   }
 
   if (!hasComparableSets.value) {
-    return "Load at least one more set so Drift can compare.";
+    return "Load at least one more .env file so Drift can compare.";
   }
 
   if (!hasCoverage.value) {
-    return "Add missing local/staging/live coverage.";
+    return "Add missing local/staging/live environment coverage.";
   }
 
   if (missingCount.value > 0) {
@@ -79,21 +79,21 @@ const quickSteps = computed(() => [
     complete: hasProject.value,
   },
   {
-    title: "Load env sets",
+    title: "Load .env files",
     detail:
       "Use Scan folder for .env* (recommended for safe write-back), or load files manually if you only need read-only comparison.",
     complete: hasSets.value,
   },
   {
-    title: "Confirm starter coverage",
+    title: "Confirm environment coverage",
     detail:
-      "Aim to load local, staging, and live roles. Use Create starter templates to generate missing starter sets.",
+      "Aim to load local, staging, and live environments. Use Create starter templates to generate missing starter files.",
     complete: hasCoverage.value,
   },
   {
     title: "Compare and triage",
     detail:
-      "Set a reference and target, then filter rows by Missing, Drift, and Unsafe to focus your review.",
+      "Set compare-from and compare-to, then filter rows by Missing, Drift, and Unsafe to focus your review.",
     complete: hasComparableSets.value,
   },
   {
@@ -227,16 +227,16 @@ function coverageClass(present: boolean): string {
             Control map: project and set management
           </summary>
           <ul class="mt-3 space-y-1.5 text-xs text-text-secondary">
-            <li><code class="font-mono text-text-primary">Active project</code>: Switches project context for all loaded sets and comparisons.</li>
+            <li><code class="font-mono text-text-primary">Active project</code>: Switches project context for all loaded .env files and comparisons.</li>
             <li><code class="font-mono text-text-primary">Save project</code>: Creates or updates a named project profile with root path.</li>
-            <li><code class="font-mono text-text-primary">Remove project from Drift</code>: Removes the saved project profile and linked loaded sets in Drift only (does not delete your project folder).</li>
-            <li><code class="font-mono text-text-primary">Scan folder for .env*</code>: Imports env files recursively and enables file write-back.</li>
-            <li><code class="font-mono text-text-primary">Create starter templates</code>: Adds missing local/staging/live starter sets.</li>
+            <li><code class="font-mono text-text-primary">Remove project from Drift</code>: Removes the saved project profile and linked .env files in Drift only (does not delete your project folder).</li>
+            <li><code class="font-mono text-text-primary">Scan folder for .env*</code>: Imports .env files recursively and enables file write-back.</li>
+            <li><code class="font-mono text-text-primary">Create starter templates</code>: Adds missing local/staging/live starter files.</li>
             <li><code class="font-mono text-text-primary">Load .env files</code>: Imports files from picker for comparison.</li>
             <li><code class="font-mono text-text-primary">Load sample trio</code>: Loads demo local/staging/live data for evaluation.</li>
-            <li><code class="font-mono text-text-primary">Clear loaded sets (Drift only)</code>: Removes loaded sets from the current project in Drift only (does not delete .env files).</li>
-            <li><code class="font-mono text-text-primary">Manual set entry</code>: Adds a set by pasted text and selected role.</li>
-            <li><code class="font-mono text-text-primary">Sets list</code>: Shows role, source, key count, duplicate keys, and remove action.</li>
+            <li><code class="font-mono text-text-primary">Remove all .env files (Drift only)</code>: Removes loaded .env files from the current project in Drift only (does not delete your files).</li>
+            <li><code class="font-mono text-text-primary">Paste .env content</code>: Adds a .env file by pasted text and selected environment.</li>
+            <li><code class="font-mono text-text-primary">File list</code>: Shows environment, source, key count, duplicate keys, and remove action.</li>
           </ul>
         </details>
 
@@ -248,16 +248,16 @@ function coverageClass(present: boolean): string {
             Control map: comparison and write-back
           </summary>
           <ul class="mt-3 space-y-1.5 text-xs text-text-secondary">
-            <li><code class="font-mono text-text-primary">Filter rows</code>: Focuses table by All, Missing, Drift, Unsafe, or Aligned.</li>
+            <li><code class="font-mono text-text-primary">Filter</code>: Focuses table by All, Missing, Drift, Unsafe, or Aligned.</li>
             <li><code class="font-mono text-text-primary">Search key</code>: Narrows results by env key prefix or fragment.</li>
-            <li><code class="font-mono text-text-primary">Reference set</code>: Source of truth used for missing-key templates.</li>
-            <li><code class="font-mono text-text-primary">Target set</code>: Set receiving copied, patched, or edited values.</li>
-            <li><code class="font-mono text-text-primary">Copy missing-key template</code>: Copies only keys absent from target.</li>
-            <li><code class="font-mono text-text-primary">Copy merged template</code>: Copies one combined template with conflict comments.</li>
-            <li><code class="font-mono text-text-primary">Patch missing keys to target</code>: Appends missing keys to target file and preserves existing values.</li>
-            <li><code class="font-mono text-text-primary">Inline drift editor</code>: Select key, source, and target for one-key updates.</li>
-            <li><code class="font-mono text-text-primary">Apply to target (in-app)</code>: Updates Drift state only, then persists locally.</li>
-            <li><code class="font-mono text-text-primary">Apply to target file</code>: Writes to disk and returns backup path in status message.</li>
+            <li><code class="font-mono text-text-primary">Compare from</code>: Source of truth used for missing-key comparison.</li>
+            <li><code class="font-mono text-text-primary">Compare to</code>: File receiving copied or edited values.</li>
+            <li><code class="font-mono text-text-primary">Copy missing keys</code>: Copies only keys absent from compare-to file.</li>
+            <li><code class="font-mono text-text-primary">Export combined .env</code>: Copies one combined .env with conflict comments.</li>
+            <li><code class="font-mono text-text-primary">Add missing keys to file</code>: Appends missing keys to compare-to file and preserves existing values.</li>
+            <li><code class="font-mono text-text-primary">Edit a key</code>: Select key, source, and destination for one-key updates.</li>
+            <li><code class="font-mono text-text-primary">Update in Drift</code>: Updates Drift state only, then persists locally.</li>
+            <li><code class="font-mono text-text-primary">Write to file</code>: Writes to disk and returns backup path in status message.</li>
             <li><code class="font-mono text-text-primary">Warnings + coverage</code>: Highlights risky defaults, missing coverage, and duplicate declarations.</li>
           </ul>
         </details>

@@ -75,7 +75,7 @@ function onProjectClick(project: ProjectProfile) {
           <span
             class="text-[11px] tabular-nums"
             :class="project.id === activeProjectId ? 'text-accent/60' : 'text-text-muted'"
-            :aria-label="(setCountsByProject[project.id] ?? 0) + ' env sets'"
+            :aria-label="(setCountsByProject[project.id] ?? 0) + ' .env files'"
           >
             {{ (setCountsByProject[project.id] ?? 0) > 0 ? setCountsByProject[project.id] : '\u00B7' }}
           </span>

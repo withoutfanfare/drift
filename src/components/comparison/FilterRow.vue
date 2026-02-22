@@ -14,15 +14,15 @@ const referenceSetId = defineModel<string>("referenceSetId", { required: true })
 
 <template>
   <div class="grid grid-cols-3 gap-3 max-[1120px]:grid-cols-1">
-    <BaseSelect v-model="filter" label="Filter rows">
+    <BaseSelect v-model="filter" label="Filter">
       <option value="all">All</option>
       <option value="missing">Missing</option>
-      <option value="drift">Drift</option>
-      <option value="unsafe">Unsafe</option>
+      <option value="drift">Drift — values that differ</option>
+      <option value="unsafe">Unsafe — debug mode, defaults</option>
       <option value="aligned">Aligned</option>
     </BaseSelect>
     <BaseInput v-model="search" label="Search key" placeholder="APP_" />
-    <BaseSelect v-model="referenceSetId" label="Reference set">
+    <BaseSelect v-model="referenceSetId" label="Compare from">
       <option v-for="s in sets" :key="s.id" :value="s.id">{{ s.name }} ({{ s.role }})</option>
     </BaseSelect>
   </div>

@@ -70,6 +70,17 @@ watch(
 const referenceSet = computed(() => props.sets.find((s) => s.id === referenceSetId.value));
 const targetSet = computed(() => props.sets.find((s) => s.id === targetSetId.value));
 
+const targetFileName = computed(() => {
+  const target = targetSet.value;
+  if (!target) return "";
+  return target.filePath ? target.name : "";
+});
+
+const missingKeyCount = computed(() => {
+  if (!referenceSet.value || !targetSet.value) return 0;
+  return getMissingEntries(referenceSet.value, targetSet.value).length;
+});
+
 // Apply filters locally (the parent passes full analysis, we filter here)
 const displayRows = computed(() => {
   const query = search.value.trim().toLowerCase();
@@ -87,12 +98,12 @@ const displayRows = computed(() => {
 
 async function onCopyMissing() {
   if (!referenceSet.value || !targetSet.value) {
-    setStatus("Choose a valid reference and target set.");
+    setStatus("Choose a valid compare-from and compare-to file.");
     return;
   }
   const template = buildMissingTemplate(referenceSet.value, targetSet.value);
   await navigator.clipboard.writeText(template);
-  setStatus(`Missing-key template copied (${referenceSet.value.name} → ${targetSet.value.name}).`);
+  setStatus(`Missing keys copied (${referenceSet.value.name} → ${targetSet.value.name}).`);
 }
 
 async function onCopyMerged() {
@@ -102,16 +113,16 @@ async function onCopyMerged() {
   }
   const merged = buildMergedTemplate(props.sets);
   await navigator.clipboard.writeText(merged);
-  setStatus("Merged template copied to clipboard.");
+  setStatus("Combined .env copied to clipboard.");
 }
 
 function requestPatch() {
   if (!referenceSet.value || !targetSet.value) {
-    setStatus("Choose a valid reference and target set.");
+    setStatus("Choose a valid compare-from and compare-to file.");
     return;
   }
   if (!targetSet.value.filePath) {
-    setStatus("Target set has no filesystem path. Use folder scan import for safe write-back.");
+    setStatus("Compare-to file has no filesystem path. Use folder scan for write-back.");
     return;
   }
   const entries = getMissingEntries(referenceSet.value, targetSet.value);
@@ -141,27 +152,27 @@ async function executePatch() {
 function onApplyMemory(targetId: string, key: string, value: string) {
   const target = props.sets.find((s) => s.id === targetId);
   if (!target || !key) {
-    setStatus("Select key and target set for inline update.");
+    setStatus("Select a key and file to update.");
     return;
   }
   const result = upsertEnvKeyInRaw(target.rawText, key, value);
   applyRawToSet(target, result.updatedContent);
 
   if (result.appended) {
-    setStatus(`Added ${key} to ${target.name} (in-app).`);
+    setStatus(`Added ${key} to ${target.name} (in Drift).`);
   } else {
-    setStatus(`Updated ${key} in ${target.name} (in-app, matched ${result.matchedCount}).`);
+    setStatus(`Updated ${key} in ${target.name} (in Drift, matched ${result.matchedCount}).`);
   }
 }
 
 async function onApplyFile(targetId: string, key: string, value: string) {
   const target = props.sets.find((s) => s.id === targetId);
   if (!target || !key) {
-    setStatus("Select key and target set for file update.");
+    setStatus("Select a key and file to update.");
     return;
   }
   if (!target.filePath) {
-    setStatus("Target set has no file path. Use scanned env files for direct file updates.");
+    setStatus("This file has no filesystem path. Use folder scan for direct file updates.");
     return;
   }
 
@@ -189,7 +200,7 @@ async function onSelectKey(key: string) {
 
 <template>
   <GlassCard>
-    <h2 class="text-[17px] font-semibold text-text-primary mb-4">Compare, Drift Control, and Write-Back</h2>
+    <h2 class="text-[17px] font-semibold text-text-primary mb-4">Compare .env files</h2>
 
     <FilterRow
       v-model:filter="filter"
@@ -202,6 +213,8 @@ async function onSelectKey(key: string) {
       <TargetRow
         v-model="targetSetId"
         :sets="sets"
+        :missing-count="missingKeyCount"
+        :target-file-name="targetFileName"
         @copy-missing="onCopyMissing"
         @copy-merged="onCopyMerged"
         @patch-target="requestPatch"
@@ -229,7 +242,7 @@ async function onSelectKey(key: string) {
     <div class="mt-3 rounded-[var(--radius-md)] border border-border-subtle bg-surface-1/45 p-3">
       <div class="flex items-center justify-between gap-2">
         <div>
-          <h3 class="text-sm font-semibold text-text-secondary">Inline editor</h3>
+          <h3 class="text-sm font-semibold text-text-secondary">Edit a key</h3>
           <p class="text-xs text-text-muted mt-0.5">Click any table row to load that key into the editor.</p>
         </div>
         <BaseButton variant="ghost" size="sm" @click="showEditor = !showEditor">
@@ -248,9 +261,9 @@ async function onSelectKey(key: string) {
     </div>
     <ConfirmDialog
       v-if="confirmingPatch"
-      title="Patch target file?"
-      :message="`This will append missing keys to ${targetSet?.filePath ?? 'the target file'}. A timestamped backup will be created first.`"
-      confirm-label="Patch file"
+      title="Add missing keys to file?"
+      :message="`This will append missing keys to ${targetSet?.filePath ?? 'the file'}. A timestamped backup will be created first.`"
+      confirm-label="Add keys"
       @confirm="executePatch"
       @cancel="confirmingPatch = false"
     />

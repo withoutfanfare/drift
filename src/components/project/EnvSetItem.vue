@@ -43,7 +43,7 @@ const roleBadgeClasses = computed(() => {
             {{ set.role }}
           </span>
           <span class="text-xs text-text-muted">&middot;</span>
-          <span class="text-xs text-text-muted">{{ set.source }}</span>
+          <span class="text-xs text-text-muted">{{ set.source === 'scan' ? 'folder scan' : set.source === 'file' ? 'file picker' : set.source === 'manual' ? 'pasted' : set.source }}</span>
           <span class="text-xs text-text-muted">&middot;</span>
           <span class="text-xs text-text-muted">{{ keyCount }} key{{ keyCount !== 1 ? 's' : '' }}</span>
           <template v-if="set.duplicates.length > 0">
@@ -58,9 +58,9 @@ const roleBadgeClasses = computed(() => {
 
     <ConfirmDialog
       v-if="confirming"
-      title="Remove env set?"
+      title="Remove .env file?"
       :message="`Remove ${set.name} from Drift? A backup will be created first. The original file is not affected.`"
-      confirm-label="Remove set"
+      confirm-label="Remove file"
       @confirm="confirming = false; emit('remove', set.id)"
       @cancel="confirming = false"
     />
