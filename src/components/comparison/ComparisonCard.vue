@@ -9,7 +9,7 @@ import { upsertEnvKeyInRaw } from "../../composables/useEnvMutations";
 import { buildMissingTemplate, buildMergedTemplate, getMissingEntries } from "../../composables/useTemplates";
 import { appendMissingEnvKeys, upsertEnvKey } from "../../composables/useTauriCommands";
 import { asFilter } from "../../composables/useRoles";
-import ConfirmDialog from "../ui/ConfirmDialog.vue";
+import DiffPreview from "./DiffPreview.vue";
 import GlassCard from "../ui/GlassCard.vue";
 import BaseButton from "../ui/BaseButton.vue";
 import FilterRow from "./FilterRow.vue";
@@ -36,7 +36,9 @@ const targetSetId = ref("");
 const editorRef = ref<InstanceType<typeof InlineDriftEditor> | null>(null);
 const showEditor = ref(false);
 const showWarnings = ref(true);
-const confirmingPatch = ref(false);
+const showPatchPreview = ref(false);
+const patchPreviewOriginal = ref("");
+const patchPreviewUpdated = ref("");
 
 const { activeProjectId } = useProjects();
 
@@ -134,11 +136,21 @@ function requestPatch() {
     setStatus("No missing keys to append.");
     return;
   }
-  confirmingPatch.value = true;
+
+  // Build preview of what will be appended
+  patchPreviewOriginal.value = targetSet.value.rawText;
+  let preview = targetSet.value.rawText;
+  if (!preview.endsWith("\n")) preview += "\n";
+  preview += "\n# Added by Drift\n";
+  for (const entry of entries) {
+    preview += `${entry.key}=${entry.value}\n`;
+  }
+  patchPreviewUpdated.value = preview;
+  showPatchPreview.value = true;
 }
 
 async function executePatch() {
-  confirmingPatch.value = false;
+  showPatchPreview.value = false;
   if (!referenceSet.value || !targetSet.value?.filePath) return;
 
   const entries = getMissingEntries(referenceSet.value, targetSet.value);
@@ -268,13 +280,16 @@ async function onSelectKey(key: string) {
         @apply-file="onApplyFile"
       />
     </div>
-    <ConfirmDialog
-      v-if="confirmingPatch"
-      title="Add missing keys to file?"
-      :message="`This will append missing keys to ${targetSet?.filePath ?? 'the file'}. A timestamped backup will be created first.`"
-      confirm-label="Add keys"
+    <DiffPreview
+      v-if="showPatchPreview"
+      :title="`Add missing keys to ${targetSet?.name}`"
+      :file-path="targetSet?.filePath ?? ''"
+      :original="patchPreviewOriginal"
+      :updated="patchPreviewUpdated"
+      :summary="`Will append ${missingKeyCount} missing keys. A backup will be created first.`"
+      confirm-label="Apply changes"
       @confirm="executePatch"
-      @cancel="confirmingPatch = false"
+      @cancel="showPatchPreview = false"
     />
   </GlassCard>
 </template>
