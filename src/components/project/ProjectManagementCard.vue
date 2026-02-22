@@ -168,6 +168,20 @@ async function onRemoveSet(setId: string) {
   if (set) setStatus(`Removed ${set.name} from Drift. Backup: ${backupPath}`);
 }
 
+function triggerFileInput() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".env,.txt";
+  input.multiple = true;
+  input.addEventListener("change", () => {
+    const files = Array.from(input.files ?? []);
+    if (files.length > 0) {
+      onLoadFiles(files);
+    }
+  });
+  input.click();
+}
+
 function onAddManual(name: string, role: EnvRole, rawText: string) {
   const project = activeProject.value;
   if (!project) {
@@ -194,6 +208,8 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
   <GlassCard padding="p-0">
     <button
       class="focus-ring w-full flex items-center gap-2.5 px-5 py-3.5 text-left rounded-[var(--radius-xl)]"
+      :aria-expanded="settingsExpanded"
+      aria-controls="project-settings-panel"
       @click="settingsExpanded = !settingsExpanded"
     >
       <svg class="h-4 w-4 shrink-0 text-text-muted" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -215,7 +231,7 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
       </svg>
     </button>
 
-    <div v-if="settingsExpanded" class="px-5 pb-5">
+    <div v-if="settingsExpanded" id="project-settings-panel" class="px-5 pb-5">
       <ProjectForm
         :active-project="activeProject"
         :scanning="scanning"
@@ -240,17 +256,20 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
     <div class="mb-4">
       <FileUploadActions
         @load-files="onLoadFiles"
+        @scan="onScan"
         @load-sample="onLoadSample"
       />
     </div>
 
     <!-- Set list -->
-    <EnvSetList :sets="sets" @remove="onRemoveSet" />
+    <EnvSetList :sets="sets" @remove="onRemoveSet" @scan="onScan" @load-files="triggerFileInput" />
 
     <!-- Manual entry (collapsible) -->
-    <div class="mt-4 border-t border-border-subtle pt-3">
+    <div v-if="sets.length > 0" class="mt-4 border-t border-border-subtle pt-3">
       <button
         class="focus-ring flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors rounded"
+        :aria-expanded="showManualForm"
+        aria-controls="manual-entry-panel"
         @click="showManualForm = !showManualForm"
       >
         <svg
@@ -264,7 +283,9 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
         </svg>
         Paste .env content manually
       </button>
-      <ManualSetForm v-if="showManualForm" @add-manual="onAddManual" />
+      <div v-if="showManualForm" id="manual-entry-panel">
+        <ManualSetForm @add-manual="onAddManual" />
+      </div>
     </div>
 
     <!-- Danger zone -->
