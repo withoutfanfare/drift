@@ -50,22 +50,31 @@ watch(activeProjectId, () => {
   targetSetId.value = "";
 });
 
-// Sync default reference/target when sets change
+// Smart defaults: compare-from = most keys, compare-to = local env
 watch(
   () => props.sets,
   (sets) => {
-    if (sets.length > 0) {
-      if (!sets.some((s) => s.id === referenceSetId.value)) {
-        referenceSetId.value = sets[0].id;
-      }
-      if (!sets.some((s) => s.id === targetSetId.value)) {
-        targetSetId.value = sets.length > 1 ? sets[1].id : sets[0].id;
-      }
-      // Ensure reference and target differ
-      if (referenceSetId.value === targetSetId.value && sets.length > 1) {
-        const fallback = sets.find((s) => s.id !== referenceSetId.value);
-        if (fallback) targetSetId.value = fallback.id;
-      }
+    if (sets.length === 0) return;
+
+    // Smart default for compare-from: set with the most keys
+    if (!sets.some((s) => s.id === referenceSetId.value)) {
+      const sorted = [...sets].sort(
+        (a, b) => Object.keys(b.values).length - Object.keys(a.values).length,
+      );
+      referenceSetId.value = sorted[0].id;
+    }
+
+    // Smart default for compare-to: prefer local environment
+    if (!sets.some((s) => s.id === targetSetId.value)) {
+      const local = sets.find((s) => s.role === "local");
+      const fallback = sets.find((s) => s.id !== referenceSetId.value);
+      targetSetId.value = local?.id ?? fallback?.id ?? sets[0].id;
+    }
+
+    // Ensure they differ
+    if (referenceSetId.value === targetSetId.value && sets.length > 1) {
+      const fallback = sets.find((s) => s.id !== referenceSetId.value);
+      if (fallback) targetSetId.value = fallback.id;
     }
   },
   { immediate: true },
