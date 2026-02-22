@@ -8,7 +8,6 @@ const SET_STORAGE_KEY = "edm.envSets.v1";
 
 function loadSetsFromStorage(
   knownProjects: ProjectProfile[],
-  defaultProjectId: string,
 ): EnvSet[] {
   const raw = localStorage.getItem(SET_STORAGE_KEY);
   if (!raw) return [];
@@ -17,21 +16,18 @@ function loadSetsFromStorage(
     const parsed = JSON.parse(raw) as PersistedSet[];
     if (!Array.isArray(parsed)) return [];
 
-    const fallbackProjectId = knownProjects[0]?.id ?? defaultProjectId;
-
     return parsed
       .map((entry) => {
-        const projectId =
-          entry.projectId &&
-          knownProjects.some((p) => p.id === entry.projectId)
-            ? entry.projectId
-            : fallbackProjectId;
+        // Skip sets whose project no longer exists
+        const projectExists = entry.projectId &&
+          knownProjects.some((p) => p.id === entry.projectId);
+        if (!projectExists) return null;
 
         const env = parseEnv(entry.rawText);
 
         return {
           id: entry.id,
-          projectId,
+          projectId: entry.projectId,
           name: entry.name,
           role: entry.role ?? detectRole(entry.name, env.values),
           source: entry.source,
@@ -41,7 +37,7 @@ function loadSetsFromStorage(
           duplicates: env.duplicates,
         };
       })
-      .filter((entry) => entry.projectId.length > 0);
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
   } catch {
     return [];
   }
@@ -49,7 +45,7 @@ function loadSetsFromStorage(
 
 const { projects, activeProjectId } = useProjects();
 const envSets = ref<EnvSet[]>(
-  loadSetsFromStorage(projects.value, activeProjectId.value),
+  loadSetsFromStorage(projects.value),
 );
 
 export function useEnvSets() {
@@ -62,17 +58,26 @@ export function useEnvSets() {
       ),
   );
 
+  let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
   function persistSets() {
-    const payload: PersistedSet[] = envSets.value.map((s) => ({
-      id: s.id,
-      projectId: s.projectId,
-      name: s.name,
-      role: s.role,
-      source: s.source,
-      rawText: s.rawText,
-      filePath: s.filePath,
-    }));
-    localStorage.setItem(SET_STORAGE_KEY, JSON.stringify(payload));
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(() => {
+      const payload: PersistedSet[] = envSets.value.map((s) => ({
+        id: s.id,
+        projectId: s.projectId,
+        name: s.name,
+        role: s.role,
+        source: s.source,
+        rawText: s.rawText,
+        filePath: s.filePath,
+      }));
+      try {
+        localStorage.setItem(SET_STORAGE_KEY, JSON.stringify(payload));
+      } catch (e) {
+        console.error("Failed to persist env sets — storage may be full:", e);
+      }
+    }, 300);
   }
 
   function addOrReplaceSet(input: {
@@ -98,13 +103,19 @@ export function useEnvSets() {
         );
 
     if (existing) {
-      existing.name = input.name;
-      existing.source = input.source;
-      existing.rawText = input.rawText;
-      existing.filePath = input.filePath;
-      existing.values = values;
-      existing.duplicates = duplicates;
-      existing.role = role;
+      const index = envSets.value.indexOf(existing);
+      if (index !== -1) {
+        envSets.value[index] = {
+          ...existing,
+          name: input.name,
+          source: input.source,
+          rawText: input.rawText,
+          filePath: input.filePath,
+          values,
+          duplicates,
+          role,
+        };
+      }
       persistSets();
       return;
     }

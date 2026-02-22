@@ -2,7 +2,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+static FALLBACK_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,6 +40,12 @@ struct UpsertResult {
     updated_content: String,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WriteEnvResult {
+    backup_path: Option<String>,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ProjectBackupSet {
@@ -52,6 +61,28 @@ struct ProjectBackupSet {
 struct ProjectBackupResult {
     backup_path: String,
     item_count: usize,
+}
+
+fn validate_env_path(raw_path: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(raw_path.trim());
+
+    let canonical = std::fs::canonicalize(&path)
+        .map_err(|e| format!("Cannot resolve path: {}", e))?;
+
+    if !canonical.is_file() {
+        return Err("Target path is not a file".to_string());
+    }
+
+    // Ensure it's an env file by name
+    let file_name = canonical
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("");
+    if !file_name.starts_with(".env") {
+        return Err("Target path is not an .env file".to_string());
+    }
+
+    Ok(canonical)
 }
 
 #[tauri::command]
@@ -103,15 +134,7 @@ fn append_missing_env_keys(
     entries: Vec<MissingEntry>,
     create_backup: bool,
 ) -> Result<PatchResult, String> {
-    let path = PathBuf::from(target_path.trim());
-
-    if !path.exists() {
-        return Err("Target env file does not exist".to_string());
-    }
-
-    if !path.is_file() {
-        return Err("Target path is not a file".to_string());
-    }
+    let path = validate_env_path(&target_path)?;
 
     let original = fs::read_to_string(&path)
         .map_err(|error| format!("Failed to read target env file: {}", error))?;
@@ -145,16 +168,6 @@ fn append_missing_env_keys(
         });
     }
 
-    let backup_path = if create_backup {
-        let timestamp = unix_timestamp();
-        let backup_file = format!("{}.bak.{}", path.to_string_lossy(), timestamp);
-        fs::write(&backup_file, &original)
-            .map_err(|error| format!("Failed to write backup file: {}", error))?;
-        Some(backup_file)
-    } else {
-        None
-    };
-
     let mut updated = original.clone();
     if !updated.ends_with('\n') {
         updated.push('\n');
@@ -167,6 +180,16 @@ fn append_missing_env_keys(
     }
 
     atomic_write(&path, &updated)?;
+
+    let backup_path = if create_backup {
+        let timestamp = unix_timestamp();
+        let backup_file = format!("{}.bak.{}", path.to_string_lossy(), timestamp);
+        fs::write(&backup_file, &original)
+            .map_err(|error| format!("Failed to write backup file: {}", error))?;
+        Some(backup_file)
+    } else {
+        None
+    };
 
     Ok(PatchResult {
         appended_count: append_entries.len(),
@@ -183,35 +206,33 @@ fn upsert_env_key(
     value: String,
     create_backup: bool,
 ) -> Result<UpsertResult, String> {
-    let path = PathBuf::from(target_path.trim());
     let normalized_key = key.trim().to_string();
 
     if normalized_key.is_empty() || !is_valid_env_key(&normalized_key) {
         return Err("Invalid env key".to_string());
     }
 
-    if !path.exists() {
-        return Err("Target env file does not exist".to_string());
-    }
-
-    if !path.is_file() {
-        return Err("Target path is not a file".to_string());
-    }
+    let path = validate_env_path(&target_path)?;
 
     let original = fs::read_to_string(&path)
         .map_err(|error| format!("Failed to read target env file: {}", error))?;
 
-    let mut matched_count = 0usize;
     let mut lines: Vec<String> = original.lines().map(|line| line.to_string()).collect();
 
-    for line in &mut lines {
-        let candidate = parse_env_key_from_line(line);
-        if let Some(found_key) = candidate {
+    // Find the last occurrence to match standard env precedence
+    let mut last_match: Option<usize> = None;
+    for (i, line) in lines.iter().enumerate() {
+        if let Some(found_key) = parse_env_key_from_line(line) {
             if found_key == normalized_key {
-                *line = format!("{}={}", normalized_key, format_env_value(&value));
-                matched_count += 1;
+                last_match = Some(i);
             }
         }
+    }
+
+    let mut matched_count = 0usize;
+    if let Some(idx) = last_match {
+        lines[idx] = format!("{}={}", normalized_key, format_env_value(&value));
+        matched_count = 1;
     }
 
     let mut appended = false;
@@ -229,6 +250,8 @@ fn upsert_env_key(
         updated.push('\n');
     }
 
+    atomic_write(&path, &updated)?;
+
     let backup_path = if create_backup {
         let timestamp = unix_timestamp();
         let backup_file = format!("{}.bak.{}", path.to_string_lossy(), timestamp);
@@ -239,14 +262,52 @@ fn upsert_env_key(
         None
     };
 
-    atomic_write(&path, &updated)?;
-
     Ok(UpsertResult {
         matched_count,
         appended,
         backup_path,
         updated_content: updated,
     })
+}
+
+#[tauri::command]
+fn write_env_file(
+    target_path: String,
+    content: String,
+    create_backup: bool,
+) -> Result<WriteEnvResult, String> {
+    const MAX_ENV_CONTENT_SIZE: usize = 5 * 1024 * 1024; // 5MB
+    if content.len() > MAX_ENV_CONTENT_SIZE {
+        return Err(format!(
+            "Content exceeds maximum size of {} bytes",
+            MAX_ENV_CONTENT_SIZE
+        ));
+    }
+
+    let path = validate_env_path(&target_path)?;
+
+    let original = if create_backup {
+        Some(
+            fs::read_to_string(&path)
+                .map_err(|error| format!("Failed to read target env file: {}", error))?,
+        )
+    } else {
+        None
+    };
+
+    atomic_write(&path, &content)?;
+
+    let backup_path = if let Some(original_content) = original {
+        let timestamp = unix_timestamp();
+        let backup_file = format!("{}.bak.{}", path.to_string_lossy(), timestamp);
+        fs::write(&backup_file, &original_content)
+            .map_err(|error| format!("Failed to write backup file: {}", error))?;
+        Some(backup_file)
+    } else {
+        None
+    };
+
+    Ok(WriteEnvResult { backup_path })
 }
 
 #[tauri::command]
@@ -288,8 +349,7 @@ fn write_project_backup(
     let content = serde_json::to_string_pretty(&payload)
         .map_err(|error| format!("Failed to serialize backup payload: {}", error))?;
 
-    fs::write(&backup_path, content)
-        .map_err(|error| format!("Failed to write backup file: {}", error))?;
+    atomic_write(&backup_path, &content)?;
 
     Ok(ProjectBackupResult {
         backup_path: backup_path.to_string_lossy().to_string(),
@@ -371,9 +431,17 @@ fn collect_bak_files(dir: &Path, entries: &mut Vec<BackupEntry>, depth: usize) {
 
     for entry in dir_entries.flatten() {
         let path = entry.path();
+        let file_type = match entry.file_type() {
+            Ok(ft) => ft,
+            Err(_) => continue,
+        };
+        if file_type.is_symlink() {
+            continue;
+        }
+
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-            if path.is_file() && name.contains(".bak.") {
-                let metadata = fs::metadata(&path).ok();
+            if file_type.is_file() && name.contains(".bak.") {
+                let metadata = entry.metadata().ok();
                 let size = metadata.map(|m| m.len()).unwrap_or(0);
                 let timestamp = name
                     .rsplit('.')
@@ -389,7 +457,7 @@ fn collect_bak_files(dir: &Path, entries: &mut Vec<BackupEntry>, depth: usize) {
                     backup_type: "bak".to_string(),
                 });
             }
-            if path.is_dir() && !should_skip_dir(name) {
+            if file_type.is_dir() && !should_skip_dir(name) {
                 collect_bak_files(&path, entries, depth + 1);
             }
         }
@@ -687,12 +755,17 @@ fn unix_timestamp() -> u64 {
         .map(|duration| duration.as_secs())
         .unwrap_or_else(|_| {
             eprintln!("Warning: system clock before UNIX epoch, using fallback timestamp");
-            std::process::id() as u64
+            FALLBACK_COUNTER.fetch_add(1, Ordering::Relaxed)
         })
 }
 
 fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
-    let tmp_path = path.with_extension("drift-tmp");
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+    let tmp_path = path.with_file_name(format!(".{}.drift-tmp.{}", file_name, nonce));
     fs::write(&tmp_path, content)
         .map_err(|error| format!("Failed to write temporary file: {}", error))?;
     fs::rename(&tmp_path, path)
@@ -709,11 +782,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             scan_env_files,
             infer_project_name,
             append_missing_env_keys,
             upsert_env_key,
+            write_env_file,
             write_project_backup,
             list_project_backups
         ])

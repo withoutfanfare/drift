@@ -85,6 +85,10 @@ export interface ProjectBackupResult {
   itemCount: number;
 }
 
+export interface WriteEnvResult {
+  backupPath: string | null;
+}
+
 export interface LocalUpsertResult {
   updatedContent: string;
   matchedCount: number;

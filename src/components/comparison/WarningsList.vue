@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { EnvSet, EnvRole } from "../../types";
-import { evaluateUnsafe } from "../../composables/useAnalysis";
+import type { EnvSet, KeyAnalysisRow, EnvRole } from "../../types";
 
 const props = defineProps<{
   sets: EnvSet[];
+  analysis: KeyAnalysisRow[];
 }>();
 
 const warnings = computed(() => {
@@ -15,17 +15,17 @@ const warnings = computed(() => {
   if (!rolesPresent.has("staging")) result.push("Coverage: staging set missing.");
   if (!rolesPresent.has("live")) result.push("Coverage: live set missing.");
 
-  for (const set of props.sets) {
-    const requiredKeys = ["APP_KEY", "APP_DEBUG", "APP_ENV", "APP_URL", "DB_PASSWORD", "QUEUE_CONNECTION", "MAIL_MAILER"];
-    const allKeys = new Set<string>([...Object.keys(set.values), ...requiredKeys]);
-
-    for (const key of allKeys) {
-      const reason = evaluateUnsafe(set, key, set.values[key]);
-      if (reason) {
-        result.push(`${set.name}: ${key} → ${reason}`);
+  // Extract unsafe warnings from pre-computed analysis
+  for (const row of props.analysis) {
+    if (row.unsafe) {
+      for (const reason of row.unsafeReasons) {
+        result.push(`${row.key} → ${reason}`);
       }
     }
+  }
 
+  // Duplicate key warnings still need per-set check
+  for (const set of props.sets) {
     if (set.duplicates.length > 0) {
       result.push(`${set.name}: duplicate key declarations (${set.duplicates.join(", ")}).`);
     }
@@ -40,7 +40,7 @@ const warnings = computed(() => {
     <h3 class="text-sm font-semibold text-text-secondary mb-2">Warnings + Coverage</h3>
     <div v-if="warnings.length > 0" class="relative">
       <ul class="max-h-56 overflow-y-auto space-y-1 text-sm text-text-secondary">
-        <li v-for="(w, i) in warnings" :key="i" class="pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-text-muted">
+        <li v-for="w in warnings" :key="w" class="pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-text-muted">
           {{ w }}
         </li>
       </ul>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import type { EnvSet, EnvRole } from "../../types";
 import { useProjects } from "../../composables/useProjects";
 import { useEnvSets } from "../../composables/useEnvSets";
@@ -17,6 +17,11 @@ import EnvSetList from "./EnvSetList.vue";
 
 const props = defineProps<{
   sets: EnvSet[];
+  creating?: boolean;
+}>();
+
+const emit = defineEmits<{
+  doneCreating: [];
 }>();
 
 const { activeProject, saveProject, deleteProject } = useProjects();
@@ -26,8 +31,12 @@ const { setStatus } = useStatus();
 const { log } = useActivityLog();
 const showManualForm = ref(false);
 const scanning = ref(false);
-const settingsExpanded = ref(false);
+const settingsExpanded = ref(props.creating ?? false);
 const confirmingClear = ref(false);
+
+watch(() => props.creating, (val) => {
+  if (val) settingsExpanded.value = true;
+});
 
 async function onSaveProject(name: string, rootPath: string) {
   if (!name || !rootPath) {
@@ -37,10 +46,11 @@ async function onSaveProject(name: string, rootPath: string) {
   const msg = saveProject(name, rootPath);
   if (msg) setStatus(msg);
   log("success", `Project saved: ${name}`, undefined, activeProject.value?.id);
+  emit("doneCreating");
 
   // Auto-scan if the project has a valid root path and no sets loaded yet
   const project = activeProject.value;
-  if (project && project.rootPath.trim() && props.sets.length === 0) {
+  if (project && project.rootPath.trim() && props.sets.length === 0 && !scanning.value) {
     await onScan();
   }
 }
@@ -222,7 +232,30 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
 </script>
 
 <template>
-  <!-- Card 1: Project Settings (collapsible) -->
+  <!-- New project form (shown directly, no accordion) -->
+  <GlassCard v-if="creating">
+    <div class="flex items-center gap-2.5 mb-4">
+      <svg class="h-4 w-4 shrink-0 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <h2 class="text-[17px] font-semibold text-text-primary">New Project</h2>
+    </div>
+    <p class="text-sm text-text-secondary mb-4">
+      Browse to your project folder and Drift will scan for .env files automatically.
+    </p>
+    <ProjectForm
+      :active-project="activeProject"
+      :scanning="scanning"
+      :creating="true"
+      @save="onSaveProject"
+      @delete="onDeleteProject"
+      @scan="onScan"
+      @baseline="onBaseline"
+    />
+  </GlassCard>
+
+  <!-- Normal project settings (collapsible accordion) -->
+  <template v-else>
   <GlassCard padding="p-0">
     <button
       class="focus-ring w-full flex items-center gap-2.5 px-5 py-3.5 text-left rounded-[var(--radius-xl)]"
@@ -260,9 +293,10 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
       />
     </div>
   </GlassCard>
+  </template>
 
-  <!-- Card 2: Environment Sets (main focus) -->
-  <GlassCard>
+  <!-- Environment Sets (hidden during project creation) -->
+  <GlassCard v-if="!creating">
     <div class="flex items-baseline justify-between gap-3 mb-4">
       <h2 class="text-[17px] font-semibold text-text-primary">.env files</h2>
       <div class="flex items-center gap-2">

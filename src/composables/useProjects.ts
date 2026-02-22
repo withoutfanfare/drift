@@ -17,7 +17,11 @@ function loadProjectsFromStorage(): ProjectProfile[] {
 
   if (!raw) {
     const initial = [createDefaultProject()];
-    localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(initial));
+    try {
+      localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(initial));
+    } catch (e) {
+      console.error("Failed to persist projects — storage may be full:", e);
+    }
     return initial;
   }
 
@@ -31,7 +35,11 @@ function loadProjectsFromStorage(): ProjectProfile[] {
   }
 
   const fallback = [createDefaultProject()];
-  localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(fallback));
+  try {
+    localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(fallback));
+  } catch (e) {
+    console.error("Failed to persist projects — storage may be full:", e);
+  }
   return fallback;
 }
 
@@ -52,12 +60,20 @@ export function useProjects() {
   );
 
   function persistProjects() {
-    localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projects.value));
+    try {
+      localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projects.value));
+    } catch (e) {
+      console.error("Failed to persist projects — storage may be full:", e);
+    }
   }
 
   function saveActiveProjectId(id: string) {
     activeProjectId.value = id;
-    localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+    try {
+      localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+    } catch (e) {
+      console.error("Failed to persist active project ID — storage may be full:", e);
+    }
   }
 
   function saveProject(name: string, rootPath: string): string | null {

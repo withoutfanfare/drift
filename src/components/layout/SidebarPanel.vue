@@ -12,6 +12,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   selectProject: [id: string];
   navigate: [page: AppPage];
+  addProject: [];
 }>();
 
 const { envSets } = useEnvSets();
@@ -41,15 +42,15 @@ function onProjectClick(project: ProjectProfile) {
     <div class="h-7 w-full shrink-0" style="-webkit-app-region: drag;" />
 
     <!-- Projects group -->
-    <div class="px-3 pb-2">
+    <div class="px-3 pb-2" style="-webkit-app-region: no-drag;">
       <div class="flex items-center justify-between mb-1.5">
         <span class="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
           Projects
         </span>
         <button
           class="focus-ring text-text-muted hover:text-text-primary transition-colors p-0.5 -mr-0.5 rounded"
-          title="Manage projects"
-          @click="emit('navigate', 'projects')"
+          title="Add project"
+          @click="emit('addProject')"
         >
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -90,7 +91,7 @@ function onProjectClick(project: ProjectProfile) {
     <div class="mx-3 border-t border-border-subtle" />
 
     <!-- Navigation group -->
-    <div class="px-3 pt-2">
+    <div class="px-3 pt-2" style="-webkit-app-region: no-drag;">
       <nav class="space-y-0.5" aria-label="Primary navigation">
         <button
           class="focus-ring w-full rounded-[var(--radius-md)] px-2 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2"

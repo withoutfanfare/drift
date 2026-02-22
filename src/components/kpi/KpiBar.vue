@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { EnvSet, KeyAnalysisRow } from "../../types";
-import KpiCard from "./KpiCard.vue";
 import { computed } from "vue";
 
 const props = defineProps<{
@@ -10,13 +9,33 @@ const props = defineProps<{
 
 const driftCount = computed(() => props.analysis.filter((r) => r.drift).length);
 const unsafeCount = computed(() => props.analysis.filter((r) => r.unsafe).length);
+
+const stats = computed(() => [
+  { label: "Files", value: props.sets.length, variant: "default" as const },
+  { label: "Keys", value: props.analysis.length, variant: "default" as const },
+  { label: "Drift", value: driftCount.value, variant: (driftCount.value > 0 ? "warning" : "default") as const },
+  { label: "Unsafe", value: unsafeCount.value, variant: (unsafeCount.value > 0 ? "danger" : "default") as const },
+]);
 </script>
 
 <template>
-  <section class="grid grid-cols-4 gap-3 mb-5 max-[1120px]:grid-cols-2">
-    <KpiCard label="Loaded sets" :value="sets.length" style="animation-delay: 0ms;" />
-    <KpiCard label="Total keys" :value="analysis.length" style="animation-delay: 60ms;" />
-    <KpiCard label="Drift keys" :value="driftCount" :variant="driftCount > 0 ? 'warning' : 'default'" style="animation-delay: 120ms;" />
-    <KpiCard label="Unsafe flags" :value="unsafeCount" :variant="unsafeCount > 0 ? 'danger' : 'default'" style="animation-delay: 180ms;" />
-  </section>
+  <div class="glass-card flex divide-x divide-border-subtle animate-scale-in">
+    <div
+      v-for="stat in stats"
+      :key="stat.label"
+      class="flex-1 flex items-center justify-center gap-2 py-2.5 px-3"
+    >
+      <span class="text-[11px] text-text-tertiary">{{ stat.label }}</span>
+      <strong
+        class="text-base font-semibold tabular-nums"
+        :class="{
+          'text-text-primary': stat.variant === 'default',
+          'text-danger': stat.variant === 'danger',
+          'text-warning': stat.variant === 'warning',
+        }"
+      >
+        {{ stat.value }}
+      </strong>
+    </div>
+  </div>
 </template>

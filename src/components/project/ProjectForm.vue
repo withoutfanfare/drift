@@ -11,6 +11,7 @@ import ConfirmDialog from "../ui/ConfirmDialog.vue";
 const props = defineProps<{
   activeProject: ProjectProfile | undefined;
   scanning?: boolean;
+  creating?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -30,9 +31,22 @@ const confirmingDelete = ref(false);
 watch(
   () => props.activeProject,
   (p) => {
-    projectName.value = p?.name ?? "";
-    projectPath.value = p?.rootPath ?? "";
-    lastSuggestedName.value = p?.name ?? "";
+    if (!props.creating) {
+      projectName.value = p?.name ?? "";
+      projectPath.value = p?.rootPath ?? "";
+      lastSuggestedName.value = p?.name ?? "";
+    }
+  },
+);
+
+watch(
+  () => props.creating,
+  (val) => {
+    if (val) {
+      projectName.value = "";
+      projectPath.value = "";
+      lastSuggestedName.value = "";
+    }
   },
 );
 
@@ -101,17 +115,19 @@ async function browseForProjectPath() {
         Browse for folder
       </BaseButton>
       <BaseButton variant="primary" size="sm" @click="emit('save', projectName.trim(), projectPath.trim())">
-        Save project
+        {{ creating ? 'Add project' : 'Save project' }}
       </BaseButton>
-      <BaseButton variant="tertiary" size="sm" :loading="scanning" @click="emit('scan')">
-        Scan .env files
-      </BaseButton>
-      <BaseButton variant="tertiary" size="sm" @click="emit('baseline')">
-        Create starter templates
-      </BaseButton>
+      <template v-if="!creating">
+        <BaseButton variant="tertiary" size="sm" :loading="scanning" @click="emit('scan')">
+          Scan .env files
+        </BaseButton>
+        <BaseButton variant="tertiary" size="sm" @click="emit('baseline')">
+          Create starter templates
+        </BaseButton>
+      </template>
     </div>
 
-    <div class="border-t border-border-subtle pt-3">
+    <div v-if="!creating" class="border-t border-border-subtle pt-3">
       <BaseButton variant="danger" size="sm" @click="confirmingDelete = true">
         Remove project from Drift
       </BaseButton>

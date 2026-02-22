@@ -4,30 +4,48 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Drift is a Tauri 2 desktop app for Laravel developers to manage `.env` file sets across projects, detect environment drift, and safely patch missing keys. Built with vanilla TypeScript (no framework) on the frontend and Rust on the backend.
+Drift is a Tauri 2 desktop app for Laravel developers to manage `.env` file sets across projects, detect environment drift, and safely patch missing keys. Built with Vue 3 + Tailwind CSS 4 on the frontend and Rust on the backend, styled with the Spool dark glassmorphic design system.
 
 ## Development Commands
 
 ```bash
 npm install                # Install frontend dependencies
 npm run tauri dev          # Run dev mode (Vite dev server + Tauri window)
-npm run build              # TypeScript check + Vite production build (frontend only)
+npm run build              # vue-tsc type check + Vite production build (frontend only)
 npm run tauri build        # Full production build (frontend + Rust binary)
 ```
 
-No test framework is configured. No linter/formatter beyond TypeScript strict mode.
+No test framework is configured. No linter/formatter beyond TypeScript strict mode + vue-tsc.
 
 ## Architecture
 
-### Frontend (`src/main.ts`)
+### Frontend (Vue 3 + Tailwind CSS 4)
 
-Single monolithic TypeScript file (~1600 lines) using vanilla DOM manipulation. No framework — all UI is built with HTML string templates and direct DOM APIs.
+Single-page Vue 3 app using Composition API with `<script setup>`. Entry point: `src/main.ts` mounts `App.vue` to `#app`.
 
-Key data types: `ProjectProfile`, `EnvSet`, `KeyAnalysisRow`, `PersistedSet`, `PersistedProject`.
+**Types** (`src/types/index.ts`): `ProjectProfile`, `EnvSet`, `KeyAnalysisRow`, `PersistedSet`, `PersistedProject`, `ScannedEnvFile`, `MissingEntry`, `PatchResult`, `UpsertResult`, `LocalUpsertResult`.
 
-Data flow: localStorage (`edm.projects.v1`, `edm.activeProject.v1`, `edm.envSets.v1`) → in-memory state → DOM render cycle. Every mutation persists immediately.
+**Composables** (`src/composables/`):
+- `useProjects` — reactive project CRUD + localStorage persistence (`edm.projects.v1`, `edm.activeProject.v1`)
+- `useEnvSets` — reactive env set management + localStorage persistence (`edm.envSets.v1`)
+- `useAnalysis` — drift analysis, unsafe evaluation, production-like detection
+- `useFilters` — reactive filter/search state
+- `useEnvParser` — pure-function env file parsing utilities
+- `useTemplates` — missing/merged template generation
+- `useRoles` — role detection, sorting, type guards
+- `useEnvMutations` — in-memory env key upsert
+- `useTauriCommands` — typed wrappers for Tauri IPC commands
+- `useStatus` — reactive status message with auto-clear
+- `useSampleData` — sample data and baseline set generation
 
-The frontend calls Rust commands via `@tauri-apps/api` invoke.
+**Components** (`src/components/`):
+- `layout/` — AppShell (titlebar + container), AmbientBackground (animated blobs)
+- `ui/` — GlassCard, BaseButton, BaseSelect, BaseInput, BaseTextarea
+- `kpi/` — KpiCard, KpiBar
+- `project/` — ProjectManagementCard, ProjectSelector, ProjectForm, FileUploadActions, ManualSetForm, EnvSetList, EnvSetItem
+- `comparison/` — ComparisonCard, FilterRow, TargetRow, InlineDriftEditor, ComparisonTable, ComparisonTableRow, StatusBadge, StatusMessage, WarningsList
+
+**Styling** (`src/styles/main.css`): Tailwind CSS 4 with Spool design tokens in `@theme {}` block. Dark-mode-only with glassmorphic panels, ambient background blobs, and custom scrollbars.
 
 ### Backend (`src-tauri/src/lib.rs`)
 
@@ -41,7 +59,7 @@ All Rust structs use `#[serde(rename_all = "camelCase")]` for JSON interop with 
 
 ### Entry Points
 
-- Frontend: `index.html` → `src/main.ts`
+- Frontend: `index.html` → `src/main.ts` → `App.vue`
 - Rust lib: `src-tauri/src/lib.rs` → `run()`
 - Rust binary: `src-tauri/src/main.rs` → calls `env_drift_manager_lib::run()`
 
@@ -49,7 +67,10 @@ All Rust structs use `#[serde(rename_all = "camelCase")]` for JSON interop with 
 
 - Tauri 2.x APIs (not Tauri 1.x) — commands return `Result<T, String>`
 - Rust serde structs use camelCase for JSON field names
-- Frontend uses no framework — avoid introducing React/Vue/etc. without discussion
+- Vue 3 Composition API with `<script setup lang="ts">` — no Options API
+- Tailwind CSS 4 with CSS-first `@theme {}` config — no `tailwind.config.js`
+- Spool design system: dark mode, glassmorphic cards, accent blue (#60A5FA)
+- Composables use module-level `ref()` for singleton state (no provide/inject needed)
 - Safe file operations: always validate paths, parse before write, backup before mutate
 - localStorage is the only persistence layer (no database)
 - Vite dev server runs on port 1420

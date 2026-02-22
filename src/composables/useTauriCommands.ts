@@ -3,6 +3,7 @@ import type {
   ScannedEnvFile,
   PatchResult,
   UpsertResult,
+  WriteEnvResult,
   MissingEntry,
   ProjectBackupSet,
   ProjectBackupResult,
@@ -39,6 +40,18 @@ export function upsertEnvKey(
     targetPath,
     key,
     value,
+    createBackup,
+  });
+}
+
+export function writeEnvFile(
+  targetPath: string,
+  content: string,
+  createBackup: boolean,
+): Promise<WriteEnvResult> {
+  return invoke<WriteEnvResult>("write_env_file", {
+    targetPath,
+    content,
     createBackup,
   });
 }

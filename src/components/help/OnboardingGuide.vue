@@ -1,267 +1,273 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import type { EnvSet, KeyAnalysisRow } from "../../types";
 import GlassCard from "../ui/GlassCard.vue";
-import BaseButton from "../ui/BaseButton.vue";
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   sets: EnvSet[];
   analysis: KeyAnalysisRow[];
   activeProjectName?: string;
-  compact?: boolean;
-}>(), {
-  compact: false,
-});
-
-const expanded = ref(!props.compact);
+}>();
 
 const hasProject = computed(() => Boolean(props.activeProjectName?.trim()));
 const hasSets = computed(() => props.sets.length > 0);
 const hasComparableSets = computed(() => props.sets.length >= 2);
 const hasScannedSet = computed(() => props.sets.some((set) => Boolean(set.filePath)));
 
-const roleCoverage = computed(() => ({
-  local: props.sets.some((set) => set.role === "local"),
-  staging: props.sets.some((set) => set.role === "staging"),
-  live: props.sets.some((set) => set.role === "live"),
-}));
-
-const missingCount = computed(() =>
-  props.analysis.filter((row) => row.missingCount > 0).length,
-);
-const driftCount = computed(() => props.analysis.filter((row) => row.drift).length);
-const unsafeCount = computed(() => props.analysis.filter((row) => row.unsafe).length);
-
-const hasCoverage = computed(
-  () => roleCoverage.value.local && roleCoverage.value.staging && roleCoverage.value.live,
-);
-
-const completedSteps = computed(() => quickSteps.value.filter((s) => s.complete).length);
-const allComplete = computed(() => completedSteps.value === quickSteps.value.length);
-
-const nextAction = computed(() => {
-  if (!hasProject.value) {
-    return "Create or select your first project.";
-  }
-
-  if (!hasSets.value) {
-    return "Load .env files into this project.";
-  }
-
-  if (!hasComparableSets.value) {
-    return "Load at least one more .env file so Drift can compare.";
-  }
-
-  if (!hasCoverage.value) {
-    return "Add missing local/staging/live environment coverage.";
-  }
-
-  if (missingCount.value > 0) {
-    return "Use Missing filter, then patch or review missing keys.";
-  }
-
-  if (unsafeCount.value > 0) {
-    return "Resolve unsafe flags before deployment.";
-  }
-
-  if (driftCount.value > 0) {
-    return "Review remaining drift and confirm intentional differences.";
-  }
-
-  return "Export templates and keep this project snapshot for future checks.";
-});
-
-const quickSteps = computed(() => [
+const steps = computed(() => [
   {
-    title: "Set your active project",
-    detail:
-      "In Project + Env Set Management, enter Project name, browse for a project folder (or paste a path), then select Save project.",
+    title: "Create a project",
+    description:
+      "Go to the Projects page, give your project a name, and browse to its root folder. Drift stores this locally so you can switch between projects quickly.",
     complete: hasProject.value,
   },
   {
     title: "Load .env files",
-    detail:
-      "Use Scan folder for .env* (recommended for safe write-back), or load files manually if you only need read-only comparison.",
+    description:
+      "Drift auto-scans your project folder when you save. You can also pick files manually or paste content directly.",
     complete: hasSets.value,
   },
   {
-    title: "Confirm environment coverage",
-    detail:
-      "Aim to load local, staging, and live environments. Use Create starter templates to generate missing starter files.",
-    complete: hasCoverage.value,
-  },
-  {
-    title: "Compare and triage",
-    detail:
-      "Set compare-from and compare-to, then filter rows by Missing, Drift, and Unsafe to focus your review.",
+    title: "Compare environments",
+    description:
+      "With two or more files loaded, the Dashboard picks smart defaults \u2014 the file with the most keys as \u2018compare from\u2019, and your local file as \u2018compare to\u2019.",
     complete: hasComparableSets.value,
   },
   {
-    title: "Apply changes safely",
-    detail:
-      "Patch missing keys appends only. Apply to target file writes to disk with a backup. Apply in-app edits only the in-memory copy.",
-    complete: hasScannedSet.value,
+    title: "Review and fix",
+    description:
+      "Filter by missing, drift, or unsafe keys. Click any row to edit it, or patch all missing keys at once \u2014 Drift shows a diff preview before writing.",
+    complete: hasComparableSets.value && hasScannedSet.value,
   },
 ]);
 
-function stepBadgeClass(complete: boolean): string {
-  return complete
-    ? "border-success/30 bg-success/15 text-success"
-    : "border-warning/30 bg-warning/15 text-warning";
-}
+const completedSteps = computed(() => steps.value.filter((s) => s.complete).length);
+const progressPercent = computed(
+  () => Math.round((completedSteps.value / steps.value.length) * 100),
+);
 
-function coverageClass(present: boolean): string {
-  return present
-    ? "border-success/30 bg-success/15 text-success"
-    : "border-danger/30 bg-danger/15 text-danger";
-}
+const features = [
+  {
+    icon: "compare",
+    title: "Side-by-side comparison",
+    description:
+      "See every key across all loaded .env files in one table. Missing values, differing values, and unsafe defaults are flagged automatically.",
+  },
+  {
+    icon: "filter",
+    title: "Smart filtering",
+    description:
+      "Focus on what matters \u2014 filter by Missing, Drift, Unsafe, or Aligned. Search by key name to find specific variables.",
+  },
+  {
+    icon: "edit",
+    title: "Inline editing",
+    description:
+      "Click any table row to load it into the editor. Copy a value from one file, then update in Drift or write directly to disk.",
+  },
+  {
+    icon: "diff",
+    title: "Diff preview",
+    description:
+      "Before any file write, Drift shows exactly what will change \u2014 lines added and removed \u2014 so you can review before confirming.",
+  },
+  {
+    icon: "mask",
+    title: "Secret masking",
+    description:
+      "Sensitive values (passwords, tokens, API keys) are masked by default. Toggle globally in the titlebar, or click individual cells to reveal.",
+  },
+  {
+    icon: "backup",
+    title: "Automatic backups",
+    description:
+      "Every file write creates a timestamped .bak copy first. Browse all backups for your project on the Projects page.",
+  },
+  {
+    icon: "activity",
+    title: "Activity timeline",
+    description:
+      "Every action is logged \u2014 scans, edits, file writes, errors. Expand the timeline at the bottom of any page to review what happened.",
+  },
+  {
+    icon: "scan",
+    title: "Auto-scan on save",
+    description:
+      "When you save a project with a root path, Drift automatically scans for .env files. Hit the refresh icon on the Projects page to re-scan.",
+  },
+];
+
+const safetyPoints = [
+  "Drift runs entirely on your machine. No data leaves this app \u2014 there are no cloud services, APIs, or telemetry.",
+  "File write-back is only available for scanned files with a real filesystem path. Pasted content stays in-memory.",
+  "Before writing to any file, Drift creates a timestamped backup (e.g. .env.bak.1700000000).",
+  "Patching missing keys only appends \u2014 it never overwrites existing values in your target file.",
+  "Project data and .env content is stored in localStorage on this machine. Treat the workstation as sensitive.",
+];
 </script>
 
 <template>
+  <!-- Getting started -->
   <GlassCard>
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div class="min-w-0">
-        <h2 class="text-[17px] font-semibold text-text-primary">Start here: guided onboarding</h2>
-        <p class="text-sm text-text-secondary mt-1">
-          Work through this checklist in order. Drift is built for configuration safety, not speed at any cost.
-        </p>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-accent/15">
+        <svg class="h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </div>
-
-      <div class="min-w-[220px] max-w-[360px] flex-1">
-        <div class="flex items-center justify-between gap-2">
-          <span
-            class="inline-flex items-center rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs font-semibold"
-            :class="allComplete
-              ? 'border-success/35 bg-success/15 text-success'
-              : 'border-warning/35 bg-warning/15 text-warning'"
-          >
-            {{ allComplete ? 'All steps complete' : `${completedSteps} of ${quickSteps.length} complete` }}
-          </span>
-          <BaseButton
-            variant="ghost"
-            size="sm"
-            @click="expanded = !expanded"
-          >
-            {{ expanded ? "Hide guide" : "Show guide" }}
-          </BaseButton>
-        </div>
-        <p class="text-xs text-text-secondary mt-2">
-          Next action: {{ nextAction }}
-        </p>
+      <div class="flex-1 min-w-0">
+        <h2 class="text-[15px] font-semibold text-text-primary">Getting started</h2>
+        <p class="text-xs text-text-secondary mt-0.5">{{ completedSteps }} of {{ steps.length }} steps complete</p>
       </div>
     </div>
 
-    <div v-if="expanded" class="mt-4 space-y-4">
+    <!-- Progress bar -->
+    <div class="h-1 rounded-full bg-surface-2 mb-5">
       <div
-        :class="props.compact ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-[1.3fr_1fr] gap-4 max-[1120px]:grid-cols-1'"
+        class="h-full rounded-full transition-all duration-500 ease-out"
+        :class="progressPercent === 100 ? 'bg-success' : 'bg-accent'"
+        :style="{ width: `${progressPercent}%` }"
+      />
+    </div>
+
+    <ol class="space-y-1">
+      <li
+        v-for="(step, index) in steps"
+        :key="step.title"
+        class="flex gap-3"
       >
-        <section class="rounded-[var(--radius-lg)] border border-border-default bg-surface-1/65 p-4">
-          <h3 class="text-sm font-semibold text-text-primary">Recommended workflow</h3>
-          <ol class="mt-3 space-y-3">
-            <li
-              v-for="(step, index) in quickSteps"
-              :key="step.title"
-              class="rounded-[var(--radius-md)] border border-border-subtle bg-surface-2/40 p-3"
-            >
-              <div class="flex flex-wrap items-start gap-2">
-                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-accent/20 text-xs font-semibold text-accent">
-                  {{ index + 1 }}
-                </span>
-                <div class="min-w-0 flex-1">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="text-sm font-semibold text-text-primary">{{ step.title }}</p>
-                    <span
-                      class="inline-flex items-center rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs font-semibold"
-                      :class="stepBadgeClass(step.complete)"
-                    >
-                      {{ step.complete ? "Complete" : "Pending" }}
-                    </span>
-                  </div>
-                  <p class="text-xs text-text-secondary mt-1">{{ step.detail }}</p>
-                </div>
-              </div>
-            </li>
-          </ol>
-        </section>
-
-        <section class="space-y-3">
-          <div class="rounded-[var(--radius-lg)] border border-border-default bg-surface-1/65 p-4">
-            <h3 class="text-sm font-semibold text-text-primary">Trust and safety boundaries</h3>
-            <ul class="mt-2 space-y-1.5 text-xs text-text-secondary">
-              <li>Drift runs locally in this Tauri app. It does not sync your env data to cloud services.</li>
-              <li>Write-back actions are available only for scanned files that include a real filesystem path.</li>
-              <li>Before file writes, Drift creates timestamped backups such as <code class="font-mono text-text-primary">.env.bak.1700000000</code>.</li>
-              <li>Patch missing keys appends only; it does not overwrite existing target keys.</li>
-              <li>Project and set data is stored in localStorage on this machine, including env values. Treat the workstation as sensitive.</li>
-            </ul>
+        <!-- Step indicator -->
+        <div class="flex flex-col items-center">
+          <div
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors"
+            :class="step.complete
+              ? 'border-success bg-success/15 text-success'
+              : 'border-surface-3 bg-surface-2/50 text-text-muted'"
+          >
+            <svg v-if="step.complete" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span v-else class="text-xs font-semibold">{{ index + 1 }}</span>
           </div>
+          <div
+            v-if="index < steps.length - 1"
+            class="w-0.5 flex-1 my-1.5 rounded-full"
+            :class="step.complete ? 'bg-success/30' : 'bg-surface-3/50'"
+          />
+        </div>
 
-          <div class="rounded-[var(--radius-lg)] border border-border-default bg-surface-1/65 p-4">
-            <h3 class="text-sm font-semibold text-text-primary">Coverage and health snapshot</h3>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <span class="inline-flex items-center rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs font-semibold" :class="coverageClass(roleCoverage.local)">
-                local {{ roleCoverage.local ? "present" : "missing" }}
-              </span>
-              <span class="inline-flex items-center rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs font-semibold" :class="coverageClass(roleCoverage.staging)">
-                staging {{ roleCoverage.staging ? "present" : "missing" }}
-              </span>
-              <span class="inline-flex items-center rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs font-semibold" :class="coverageClass(roleCoverage.live)">
-                live {{ roleCoverage.live ? "present" : "missing" }}
-              </span>
-            </div>
-            <div class="mt-3 text-xs text-text-secondary space-y-1">
-              <p>Missing keys: <span class="text-text-primary font-semibold">{{ missingCount }}</span></p>
-              <p>Drift keys: <span class="text-text-primary font-semibold">{{ driftCount }}</span></p>
-              <p>Unsafe flags: <span class="text-text-primary font-semibold">{{ unsafeCount }}</span></p>
-            </div>
-          </div>
-        </section>
+        <!-- Step content -->
+        <div class="pb-4 min-w-0">
+          <p
+            class="text-sm font-medium"
+            :class="step.complete ? 'text-text-secondary line-through decoration-text-muted/40' : 'text-text-primary'"
+          >
+            {{ step.title }}
+          </p>
+          <p class="text-xs text-text-muted mt-0.5 leading-relaxed">{{ step.description }}</p>
+        </div>
+      </li>
+    </ol>
+  </GlassCard>
+
+  <!-- Features -->
+  <GlassCard>
+    <div class="flex items-center gap-3 mb-5">
+      <div class="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-accent/15">
+        <svg class="h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+          <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+          <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+          <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+        </svg>
       </div>
-
-      <div :class="props.compact ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-4 max-[1120px]:grid-cols-1'">
-        <details
-          class="rounded-[var(--radius-lg)] border border-border-default bg-surface-1/65 p-4 open:border-border-accent"
-          :open="!props.compact"
-        >
-          <summary class="cursor-pointer text-sm font-semibold text-text-primary">
-            Control map: project and set management
-          </summary>
-          <ul class="mt-3 space-y-1.5 text-xs text-text-secondary">
-            <li><code class="font-mono text-text-primary">Active project</code>: Switches project context for all loaded .env files and comparisons.</li>
-            <li><code class="font-mono text-text-primary">Save project</code>: Creates or updates a named project profile with root path.</li>
-            <li><code class="font-mono text-text-primary">Remove project from Drift</code>: Removes the saved project profile and linked .env files in Drift only (does not delete your project folder).</li>
-            <li><code class="font-mono text-text-primary">Scan folder for .env*</code>: Imports .env files recursively and enables file write-back.</li>
-            <li><code class="font-mono text-text-primary">Create starter templates</code>: Adds missing local/staging/live starter files.</li>
-            <li><code class="font-mono text-text-primary">Load .env files</code>: Imports files from picker for comparison.</li>
-            <li><code class="font-mono text-text-primary">Load sample trio</code>: Loads demo local/staging/live data for evaluation.</li>
-            <li><code class="font-mono text-text-primary">Remove all .env files (Drift only)</code>: Removes loaded .env files from the current project in Drift only (does not delete your files).</li>
-            <li><code class="font-mono text-text-primary">Paste .env content</code>: Adds a .env file by pasted text and selected environment.</li>
-            <li><code class="font-mono text-text-primary">File list</code>: Shows environment, source, key count, duplicate keys, and remove action.</li>
-          </ul>
-        </details>
-
-        <details
-          class="rounded-[var(--radius-lg)] border border-border-default bg-surface-1/65 p-4 open:border-border-accent"
-          :open="!props.compact"
-        >
-          <summary class="cursor-pointer text-sm font-semibold text-text-primary">
-            Control map: comparison and write-back
-          </summary>
-          <ul class="mt-3 space-y-1.5 text-xs text-text-secondary">
-            <li><code class="font-mono text-text-primary">Filter</code>: Focuses table by All, Missing, Drift, Unsafe, or Aligned.</li>
-            <li><code class="font-mono text-text-primary">Search key</code>: Narrows results by env key prefix or fragment.</li>
-            <li><code class="font-mono text-text-primary">Compare from</code>: Source of truth used for missing-key comparison.</li>
-            <li><code class="font-mono text-text-primary">Compare to</code>: File receiving copied or edited values.</li>
-            <li><code class="font-mono text-text-primary">Copy missing keys</code>: Copies only keys absent from compare-to file.</li>
-            <li><code class="font-mono text-text-primary">Export combined .env</code>: Copies one combined .env with conflict comments.</li>
-            <li><code class="font-mono text-text-primary">Add missing keys to file</code>: Appends missing keys to compare-to file and preserves existing values.</li>
-            <li><code class="font-mono text-text-primary">Edit a key</code>: Select key, source, and destination for one-key updates.</li>
-            <li><code class="font-mono text-text-primary">Update in Drift</code>: Updates Drift state only, then persists locally.</li>
-            <li><code class="font-mono text-text-primary">Write to file</code>: Writes to disk and returns backup path in status message.</li>
-            <li><code class="font-mono text-text-primary">Warnings + coverage</code>: Highlights risky defaults, missing coverage, and duplicate declarations.</li>
-          </ul>
-        </details>
+      <div>
+        <h2 class="text-[15px] font-semibold text-text-primary">What Drift can do</h2>
+        <p class="text-xs text-text-secondary mt-0.5">Everything you need to manage .env files across environments.</p>
       </div>
     </div>
+
+    <div class="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
+      <div
+        v-for="feature in features"
+        :key="feature.title"
+        class="rounded-[var(--radius-lg)] border border-border-subtle bg-surface-2/25 p-3.5 transition-colors hover:border-border-default"
+      >
+        <div class="flex h-7 w-7 items-center justify-center rounded-[var(--radius-md)] bg-surface-2/80 mb-2.5">
+          <!-- Compare -->
+          <svg v-if="feature.icon === 'compare'" class="h-3.5 w-3.5 text-text-secondary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <line x1="12" y1="20" x2="12" y2="4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <line x1="6" y1="20" x2="6" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <!-- Filter -->
+          <svg v-else-if="feature.icon === 'filter'" class="h-3.5 w-3.5 text-text-secondary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <!-- Edit -->
+          <svg v-else-if="feature.icon === 'edit'" class="h-3.5 w-3.5 text-text-secondary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <!-- Diff -->
+          <svg v-else-if="feature.icon === 'diff'" class="h-3.5 w-3.5 text-text-secondary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <!-- Mask -->
+          <svg v-else-if="feature.icon === 'mask'" class="h-3.5 w-3.5 text-text-secondary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <!-- Backup -->
+          <svg v-else-if="feature.icon === 'backup'" class="h-3.5 w-3.5 text-text-secondary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <!-- Activity -->
+          <svg v-else-if="feature.icon === 'activity'" class="h-3.5 w-3.5 text-text-secondary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <!-- Scan -->
+          <svg v-else class="h-3.5 w-3.5 text-text-secondary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3 class="text-[13px] font-semibold text-text-primary">{{ feature.title }}</h3>
+        <p class="text-xs text-text-muted mt-1 leading-relaxed">{{ feature.description }}</p>
+      </div>
+    </div>
+  </GlassCard>
+
+  <!-- Trust and safety -->
+  <GlassCard>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-success/15">
+        <svg class="h-4 w-4 text-success" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <h2 class="text-[15px] font-semibold text-text-primary">Trust and safety</h2>
+        <p class="text-xs text-text-secondary mt-0.5">How Drift keeps your configuration safe.</p>
+      </div>
+    </div>
+
+    <ul class="space-y-3">
+      <li
+        v-for="(point, i) in safetyPoints"
+        :key="i"
+        class="flex gap-2.5"
+      >
+        <svg class="h-4 w-4 shrink-0 text-success/60 mt-0.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p class="text-xs text-text-secondary leading-relaxed">{{ point }}</p>
+      </li>
+    </ul>
   </GlassCard>
 </template>

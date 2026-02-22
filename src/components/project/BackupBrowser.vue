@@ -10,18 +10,25 @@ const { activeProject } = useProjects();
 const backups = ref<BackupEntry[]>([]);
 const loading = ref(false);
 const expanded = ref(false);
+let loadGeneration = 0;
 
 async function loadBackups() {
   const project = activeProject.value;
   if (!project?.rootPath) return;
 
+  const thisGeneration = ++loadGeneration;
   loading.value = true;
   try {
-    backups.value = await listProjectBackups(project.rootPath);
+    const result = await listProjectBackups(project.rootPath);
+    if (thisGeneration !== loadGeneration) return;
+    backups.value = result;
   } catch {
+    if (thisGeneration !== loadGeneration) return;
     backups.value = [];
   } finally {
-    loading.value = false;
+    if (thisGeneration === loadGeneration) {
+      loading.value = false;
+    }
   }
 }
 

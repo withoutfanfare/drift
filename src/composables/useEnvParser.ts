@@ -22,13 +22,21 @@ export function parseEnv(content: string): { values: Record<string, string>; dup
     }
 
     const rawValue = withoutExport.slice(eqIndex + 1).trim();
-    const value = stripWrappingQuotes(rawValue);
+
+    // Strip inline comments from unquoted values (matching Rust behaviour)
+    let processedValue: string;
+    if (rawValue.startsWith('"') || rawValue.startsWith("'")) {
+      processedValue = stripWrappingQuotes(rawValue);
+    } else {
+      const commentIndex = rawValue.indexOf(" #");
+      processedValue = commentIndex >= 0 ? rawValue.slice(0, commentIndex).trimEnd() : rawValue;
+    }
 
     if (Object.prototype.hasOwnProperty.call(values, key)) {
       duplicates.add(key);
     }
 
-    values[key] = value;
+    values[key] = processedValue;
   }
 
   return { values, duplicates: [...duplicates] };
@@ -38,8 +46,13 @@ export function stripWrappingQuotes(value: string): string {
   if (value.length >= 2) {
     const starts = value[0];
     const ends = value[value.length - 1];
-    if ((starts === '"' && ends === '"') || (starts === "'" && ends === "'")) {
-      return value.slice(1, -1);
+    if (starts === '"' && ends === '"') {
+      // Process escape sequences in double-quoted values (matching Rust)
+      return value.slice(1, -1).replace(/\\"/g, '"');
+    }
+    if (starts === "'" && ends === "'") {
+      // Single-quoted values: no escape processing (matching Rust)
+      return value.slice(1, -1).replace(/\\'/g, "'");
     }
   }
 

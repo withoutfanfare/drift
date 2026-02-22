@@ -49,12 +49,12 @@ export function useSampleData() {
       rawText: [
         "APP_NAME=Laravel",
         "APP_ENV=production",
-        "APP_KEY=",
-        "APP_DEBUG=true",
-        "APP_URL=http://example.com",
-        "QUEUE_CONNECTION=sync",
-        "MAIL_MAILER=log",
-        "LOG_LEVEL=debug",
+        "APP_KEY=base64:prodkey",
+        "APP_DEBUG=false",
+        "APP_URL=https://example.com",
+        "QUEUE_CONNECTION=redis",
+        "MAIL_MAILER=smtp",
+        "LOG_LEVEL=warning",
       ].join("\n"),
     });
   }

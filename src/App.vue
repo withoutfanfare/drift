@@ -30,10 +30,18 @@ function loadPage(): AppPage {
 }
 
 const page = ref<AppPage>(loadPage());
+const creatingProject = ref(false);
 
 function openPage(next: AppPage) {
   page.value = next;
   localStorage.setItem(PAGE_STORAGE_KEY, next);
+  if (next !== "projects") creatingProject.value = false;
+}
+
+function onAddProject() {
+  creatingProject.value = true;
+  page.value = "projects";
+  localStorage.setItem(PAGE_STORAGE_KEY, "projects");
 }
 
 function onSelectProject(id: string) {
@@ -56,6 +64,7 @@ function onProjectChange(id: string) {
         :page="page"
         @select-project="onSelectProject"
         @navigate="openPage"
+        @add-project="onAddProject"
       />
     </template>
 
@@ -84,14 +93,8 @@ function onProjectChange(id: string) {
       </button>
     </div>
 
-    <div class="space-y-5">
+    <div class="space-y-4">
       <template v-if="page === 'dashboard'">
-        <PageHeader
-          eyebrow="Overview"
-          title="Dashboard"
-          description="Compare .env files, identify drift, and apply targeted fixes."
-        />
-
         <!-- Empty state: no project -->
         <EmptyState
           v-if="!activeProject"
@@ -131,19 +134,19 @@ function onProjectChange(id: string) {
           <ComparisonCard
             :sets="currentSets"
             :analysis="analysis"
-            :filtered-rows="analysis"
           />
         </template>
       </template>
 
       <template v-else-if="page === 'projects'">
         <PageHeader
+          v-if="!creatingProject"
           eyebrow="Configuration"
           title="Projects"
           description="Manage project records and choose which env sets Drift loads for analysis and safe write-back."
         />
-        <ProjectManagementCard :sets="currentSets" />
-        <BackupBrowser />
+        <ProjectManagementCard :sets="currentSets" :creating="creatingProject" @done-creating="creatingProject = false" />
+        <BackupBrowser v-if="!creatingProject" />
       </template>
 
       <template v-else>

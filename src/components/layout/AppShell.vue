@@ -15,6 +15,7 @@ const { globalMasked, toggleMasking } = useMasking();
         <button
           class="focus-ring rounded-[var(--radius-md)] p-1.5 text-text-muted hover:text-text-primary transition-colors"
           :title="globalMasked ? 'Reveal values' : 'Mask values'"
+          :aria-label="globalMasked ? 'Reveal values' : 'Mask values'"
           style="-webkit-app-region: no-drag;"
           @click="toggleMasking"
         >

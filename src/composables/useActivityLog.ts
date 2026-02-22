@@ -18,7 +18,20 @@ function loadEntries(): ActivityEntry[] {
 }
 
 function persistEntries() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.value));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.value));
+  } catch (e) {
+    console.error("Failed to persist activity log — storage may be full:", e);
+    // Trim entries and retry once
+    if (entries.value.length > 50) {
+      entries.value = entries.value.slice(0, 50);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.value));
+      } catch {
+        // Give up silently
+      }
+    }
+  }
 }
 
 function generateId(): string {

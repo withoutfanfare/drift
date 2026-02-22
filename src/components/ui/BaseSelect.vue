@@ -6,6 +6,7 @@ const selectId = useId();
 
 defineProps<{
   label?: string;
+  ariaLabel?: string;
 }>();
 </script>
 
@@ -16,6 +17,7 @@ defineProps<{
       <select
         :id="selectId"
         v-model="model"
+        :aria-label="!label ? ariaLabel : undefined"
         class="w-full rounded-[var(--radius-md)] border border-border-default bg-surface-1 px-3 py-2 pr-8 text-sm text-text-primary focus-ring appearance-none"
       >
         <slot />

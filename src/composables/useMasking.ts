@@ -32,6 +32,8 @@ function loadMasked(): boolean {
 
 const globalMasked = ref(loadMasked());
 
+const sensitiveKeyCache = new Map<string, boolean>();
+
 export function useMasking() {
   function toggleMasking() {
     globalMasked.value = !globalMasked.value;
@@ -39,7 +41,11 @@ export function useMasking() {
   }
 
   function isSensitiveKey(key: string): boolean {
-    return SENSITIVE_PATTERNS.some((pattern) => pattern.test(key));
+    const cached = sensitiveKeyCache.get(key);
+    if (cached !== undefined) return cached;
+    const result = SENSITIVE_PATTERNS.some((pattern) => pattern.test(key));
+    sensitiveKeyCache.set(key, result);
+    return result;
   }
 
   function maskValue(key: string, value: string): string {

@@ -6,6 +6,7 @@ const inputId = useId();
 
 defineProps<{
   label?: string;
+  ariaLabel?: string;
   placeholder?: string;
   type?: string;
 }>();
@@ -19,6 +20,7 @@ defineProps<{
       v-model="model"
       :type="type ?? 'text'"
       :placeholder="placeholder"
+      :aria-label="!label ? ariaLabel : undefined"
       class="w-full rounded-[var(--radius-md)] border border-border-default bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus-ring"
     />
   </div>
