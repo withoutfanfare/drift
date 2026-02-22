@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
 import type { EnvSet, KeyAnalysisRow } from "../../types";
+import { useMasking } from "../../composables/useMasking";
 import BaseSelect from "../ui/BaseSelect.vue";
 import BaseTextarea from "../ui/BaseTextarea.vue";
 import BaseButton from "../ui/BaseButton.vue";
+
+const { maskValue, shouldMask } = useMasking();
+const sourceRevealed = ref(false);
 
 const props = defineProps<{
   sets: EnvSet[];
@@ -50,6 +54,7 @@ watch(
     if (sourceSet.value && editorKey.value) {
       editorValue.value = sourceSet.value.values[editorKey.value] ?? "";
     }
+    sourceRevealed.value = false;
   },
   { immediate: true },
 );
@@ -94,6 +99,19 @@ defineExpose({ selectKey });
 
     <p v-if="sameSetWarning" class="mt-2 text-xs text-warning">
       Source and target are the same set. Changes will be applied to the same set they were loaded from.
+    </p>
+
+    <p v-if="sourceSet && editorKey && sourceSet.values[editorKey] !== undefined" class="mt-2 text-xs text-text-muted">
+      Source value:
+      <code
+        class="font-mono cursor-pointer"
+        :class="shouldMask(editorKey, sourceSet.values[editorKey] ?? '') && !sourceRevealed
+          ? 'text-text-muted select-none'
+          : 'text-text-secondary'"
+        @click="sourceRevealed = !sourceRevealed"
+      >{{ shouldMask(editorKey, sourceSet.values[editorKey] ?? '') && !sourceRevealed
+          ? maskValue(editorKey, sourceSet.values[editorKey] ?? '')
+          : sourceSet.values[editorKey] }}</code>
     </p>
 
     <div class="flex flex-wrap gap-2 mt-3">
