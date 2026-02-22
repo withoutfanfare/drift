@@ -13,6 +13,8 @@ import OnboardingGuide from "./components/help/OnboardingGuide.vue";
 import ProjectSelector from "./components/project/ProjectSelector.vue";
 import PageHeader from "./components/layout/PageHeader.vue";
 import ActivityTimeline from "./components/layout/ActivityTimeline.vue";
+import EmptyState from "./components/layout/EmptyState.vue";
+import BaseButton from "./components/ui/BaseButton.vue";
 
 const { projects, activeProjectId, activeProject, saveActiveProjectId } = useProjects();
 const { currentSets } = useEnvSets();
@@ -86,14 +88,51 @@ function onProjectChange(id: string) {
         <PageHeader
           eyebrow="Overview"
           title="Dashboard"
-          description="Compare environment drift, identify unsafe values, and apply targeted fixes for the active project."
+          description="Compare .env files, identify drift, and apply targeted fixes."
         />
-        <KpiBar :sets="currentSets" :analysis="analysis" />
-        <ComparisonCard
-          :sets="currentSets"
-          :analysis="analysis"
-          :filtered-rows="analysis"
-        />
+
+        <!-- Empty state: no project -->
+        <EmptyState
+          v-if="!activeProject"
+          heading="Pick a Laravel project to get started"
+          description="Browse to your project folder — Drift will scan for .env files and show you what's missing, what's different, and what's unsafe across environments."
+        >
+          <BaseButton variant="primary" @click="openPage('projects')">
+            Set up a project
+          </BaseButton>
+        </EmptyState>
+
+        <!-- Empty state: project but no sets -->
+        <EmptyState
+          v-else-if="currentSets.length === 0"
+          :heading="`No .env files loaded for ${activeProject.name}`"
+          description="Drift found your project but hasn't loaded any .env files yet."
+        >
+          <BaseButton variant="primary" @click="openPage('projects')">
+            Load .env files
+          </BaseButton>
+        </EmptyState>
+
+        <!-- Empty state: only one set -->
+        <EmptyState
+          v-else-if="currentSets.length === 1"
+          heading="Add another .env file to start comparing"
+          description="Drift needs at least two .env files to detect drift. Load your staging or production .env to see what's missing."
+        >
+          <BaseButton variant="primary" @click="openPage('projects')">
+            Load another file
+          </BaseButton>
+        </EmptyState>
+
+        <!-- Normal dashboard -->
+        <template v-else>
+          <KpiBar :sets="currentSets" :analysis="analysis" />
+          <ComparisonCard
+            :sets="currentSets"
+            :analysis="analysis"
+            :filtered-rows="analysis"
+          />
+        </template>
       </template>
 
       <template v-else-if="page === 'projects'">
