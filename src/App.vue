@@ -12,6 +12,7 @@ import ComparisonCard from "./components/comparison/ComparisonCard.vue";
 import OnboardingGuide from "./components/help/OnboardingGuide.vue";
 import ProjectSelector from "./components/project/ProjectSelector.vue";
 import PageHeader from "./components/layout/PageHeader.vue";
+import ActivityTimeline from "./components/layout/ActivityTimeline.vue";
 
 const { projects, activeProjectId, activeProject, saveActiveProjectId } = useProjects();
 const { currentSets } = useEnvSets();
@@ -117,5 +118,7 @@ function onProjectChange(id: string) {
         />
       </template>
     </div>
+
+    <ActivityTimeline />
   </AppShell>
 </template>
