@@ -4,6 +4,7 @@ import type { EnvSet, KeyAnalysisRow } from "../../types";
 import { useEnvSets } from "../../composables/useEnvSets";
 import { useProjects } from "../../composables/useProjects";
 import { useStatus } from "../../composables/useStatus";
+import { useActivityLog } from "../../composables/useActivityLog";
 import { upsertEnvKeyInRaw } from "../../composables/useEnvMutations";
 import { buildMissingTemplate, buildMergedTemplate, getMissingEntries } from "../../composables/useTemplates";
 import { appendMissingEnvKeys, upsertEnvKey } from "../../composables/useTauriCommands";
@@ -26,6 +27,7 @@ const props = defineProps<{
 
 const { applyRawToSet } = useEnvSets();
 const { statusMessage, setStatus } = useStatus();
+const { log } = useActivityLog();
 
 const filter = ref("all");
 const search = ref("");
@@ -104,6 +106,7 @@ async function onCopyMissing() {
   const template = buildMissingTemplate(referenceSet.value, targetSet.value);
   await navigator.clipboard.writeText(template);
   setStatus(`Missing keys copied (${referenceSet.value.name} → ${targetSet.value.name}).`);
+  log("info", `Copied missing keys (${referenceSet.value.name} → ${targetSet.value.name})`);
 }
 
 async function onCopyMerged() {
@@ -114,6 +117,7 @@ async function onCopyMerged() {
   const merged = buildMergedTemplate(props.sets);
   await navigator.clipboard.writeText(merged);
   setStatus("Combined .env copied to clipboard.");
+  log("info", "Copied combined .env to clipboard");
 }
 
 function requestPatch() {
@@ -143,9 +147,11 @@ async function executePatch() {
     applyRawToSet(targetSet.value, result.updatedContent);
     const backupInfo = result.backupPath ? ` backup: ${result.backupPath}` : "";
     setStatus(`Patched ${targetSet.value.name}: appended ${result.appendedCount}, skipped ${result.skippedExisting}.${backupInfo}`);
+    log("write", `Added ${result.appendedCount} keys to ${targetSet.value.name}`, result.backupPath ? `Backup: ${result.backupPath}` : undefined);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     setStatus(`Patch failed: ${message}`);
+    log("error", `Patch failed: ${message}`);
   }
 }
 
@@ -163,6 +169,7 @@ function onApplyMemory(targetId: string, key: string, value: string) {
   } else {
     setStatus(`Updated ${key} in ${target.name} (in Drift, matched ${result.matchedCount}).`);
   }
+  log("info", `${result.appended ? "Added" : "Updated"} ${key} in ${target.name} (in Drift)`);
 }
 
 async function onApplyFile(targetId: string, key: string, value: string) {
@@ -182,9 +189,11 @@ async function onApplyFile(targetId: string, key: string, value: string) {
     const updateMode = result.appended ? "added" : "updated";
     const backupInfo = result.backupPath ? ` backup: ${result.backupPath}` : "";
     setStatus(`File ${updateMode} ${key} in ${target.name}.${backupInfo}`);
+    log("write", `Wrote ${key} to ${target.name}`, result.backupPath ? `Backup: ${result.backupPath}` : undefined);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     setStatus(`Inline file update failed: ${message}`);
+    log("error", `File write failed: ${message}`);
   }
 }
 

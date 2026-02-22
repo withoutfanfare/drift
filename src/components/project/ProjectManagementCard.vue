@@ -5,6 +5,7 @@ import { useProjects } from "../../composables/useProjects";
 import { useEnvSets } from "../../composables/useEnvSets";
 import { useSampleData } from "../../composables/useSampleData";
 import { useStatus } from "../../composables/useStatus";
+import { useActivityLog } from "../../composables/useActivityLog";
 import { scanEnvFiles, writeProjectBackup } from "../../composables/useTauriCommands";
 import GlassCard from "../ui/GlassCard.vue";
 import BaseButton from "../ui/BaseButton.vue";
@@ -22,6 +23,7 @@ const { activeProject, saveProject, deleteProject } = useProjects();
 const { addOrReplaceSet, removeSet, clearProjectSets } = useEnvSets();
 const { loadSampleData, createBaselineSets } = useSampleData();
 const { setStatus } = useStatus();
+const { log } = useActivityLog();
 const showManualForm = ref(false);
 const scanning = ref(false);
 const settingsExpanded = ref(false);
@@ -34,6 +36,7 @@ function onSaveProject(name: string, rootPath: string) {
   }
   const msg = saveProject(name, rootPath);
   if (msg) setStatus(msg);
+  log("success", `Project saved: ${name}`, undefined, activeProject.value?.id);
 }
 
 async function createProjectBackup(reason: string): Promise<string | null> {
@@ -74,6 +77,7 @@ async function onDeleteProject() {
     return;
   }
   setStatus(`Removed ${removedName} from Drift (linked loaded sets removed). Backup: ${backupPath}`);
+  log("destructive", `Removed project: ${removedName}`, `Backup: ${backupPath}`);
 }
 
 async function onScan() {
@@ -99,9 +103,11 @@ async function onScan() {
       });
     }
     setStatus(`Discovered ${scanned.length} .env file${scanned.length === 1 ? "" : "s"} in ${project.name}.`);
+    log("info", `Scanned ${project.name}: found ${scanned.length} .env files`, undefined, project.id);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     setStatus(`Scan failed: ${message}`);
+    log("error", `Scan failed: ${message}`, undefined, project.id);
   } finally {
     scanning.value = false;
   }
@@ -133,6 +139,7 @@ async function onLoadFiles(files: File[]) {
     });
   }
   setStatus(`Loaded ${files.length} file${files.length > 1 ? "s" : ""} into ${project.name}.`);
+  log("info", `Loaded ${files.length} file${files.length > 1 ? "s" : ""} into ${project.name}`, undefined, project.id);
 }
 
 function onLoadSample() {
@@ -143,6 +150,7 @@ function onLoadSample() {
   }
   loadSampleData(project.id);
   setStatus(`Loaded sample local/staging/live sets into ${project.name}.`);
+  log("info", `Loaded sample data into ${project.name}`, undefined, project.id);
 }
 
 async function onClearSets() {
@@ -156,7 +164,8 @@ async function onClearSets() {
   if (!backupPath) return;
 
   clearProjectSets(project.id);
-  setStatus(`Cleared loaded env sets for ${project.name} in Drift. Backup: ${backupPath}`);
+  setStatus(`Cleared loaded .env files for ${project.name} in Drift. Backup: ${backupPath}`);
+  log("destructive", `Cleared .env files for ${project.name}`, `Backup: ${backupPath}`, project.id);
 }
 
 async function onRemoveSet(setId: string) {
@@ -165,7 +174,10 @@ async function onRemoveSet(setId: string) {
 
   const set = props.sets.find((s) => s.id === setId);
   removeSet(setId);
-  if (set) setStatus(`Removed ${set.name} from Drift. Backup: ${backupPath}`);
+  if (set) {
+    setStatus(`Removed ${set.name} from Drift. Backup: ${backupPath}`);
+    log("destructive", `Removed ${set.name} from ${activeProject.value?.name}`, `Backup: ${backupPath}`, activeProject.value?.id);
+  }
 }
 
 function triggerFileInput() {
