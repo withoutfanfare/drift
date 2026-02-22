@@ -15,6 +15,7 @@ import PageHeader from "./components/layout/PageHeader.vue";
 import ActivityTimeline from "./components/layout/ActivityTimeline.vue";
 import EmptyState from "./components/layout/EmptyState.vue";
 import BaseButton from "./components/ui/BaseButton.vue";
+import BackupBrowser from "./components/project/BackupBrowser.vue";
 
 const { projects, activeProjectId, activeProject, saveActiveProjectId } = useProjects();
 const { currentSets } = useEnvSets();
@@ -142,6 +143,7 @@ function onProjectChange(id: string) {
           description="Manage project records and choose which env sets Drift loads for analysis and safe write-back."
         />
         <ProjectManagementCard :sets="currentSets" />
+        <BackupBrowser />
       </template>
 
       <template v-else>

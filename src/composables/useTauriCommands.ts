@@ -6,6 +6,7 @@ import type {
   MissingEntry,
   ProjectBackupSet,
   ProjectBackupResult,
+  BackupEntry,
 } from "../types";
 
 export function scanEnvFiles(projectRoot: string): Promise<ScannedEnvFile[]> {
@@ -54,4 +55,8 @@ export function writeProjectBackup(
     reason,
     sets,
   });
+}
+
+export function listProjectBackups(projectRoot: string): Promise<BackupEntry[]> {
+  return invoke<BackupEntry[]>("list_project_backups", { projectRoot });
 }

@@ -91,6 +91,15 @@ export interface LocalUpsertResult {
   appended: boolean;
 }
 
+export interface BackupEntry {
+  path: string;
+  fileName: string;
+  reason: string;
+  timestamp: number;
+  sizeBytes: number;
+  backupType: "json" | "bak";
+}
+
 export type ActivityCategory = "info" | "write" | "destructive" | "success" | "error";
 
 export interface ActivityEntry {

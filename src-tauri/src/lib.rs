@@ -297,6 +297,105 @@ fn write_project_backup(
     })
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BackupEntry {
+    path: String,
+    file_name: String,
+    reason: String,
+    timestamp: u64,
+    size_bytes: u64,
+    backup_type: String,
+}
+
+#[tauri::command]
+fn list_project_backups(project_root: String) -> Result<Vec<BackupEntry>, String> {
+    let root = PathBuf::from(project_root.trim());
+    let mut entries: Vec<BackupEntry> = Vec::new();
+
+    // Scan .drift-backups/ directory for JSON backups
+    let backup_dir = root.join(".drift-backups");
+    if backup_dir.exists() && backup_dir.is_dir() {
+        if let Ok(dir_entries) = fs::read_dir(&backup_dir) {
+            for entry in dir_entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if name.starts_with("drift-") && name.ends_with(".json") {
+                            let metadata = fs::metadata(&path).ok();
+                            let size = metadata.map(|m| m.len()).unwrap_or(0);
+                            let (reason, timestamp) = parse_backup_filename(name);
+                            entries.push(BackupEntry {
+                                path: path.to_string_lossy().to_string(),
+                                file_name: name.to_string(),
+                                reason,
+                                timestamp,
+                                size_bytes: size,
+                                backup_type: "json".to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Scan for .bak.* files alongside env files
+    collect_bak_files(&root, &mut entries, 0);
+
+    // Sort newest first
+    entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    Ok(entries)
+}
+
+fn parse_backup_filename(name: &str) -> (String, u64) {
+    // Format: drift-{project}-{reason}-{timestamp}.json
+    let without_ext = name.strip_suffix(".json").unwrap_or(name);
+    let without_prefix = without_ext.strip_prefix("drift-").unwrap_or(without_ext);
+
+    // Find the last numeric segment as timestamp
+    let parts: Vec<&str> = without_prefix.rsplitn(2, '-').collect();
+    let timestamp = parts.first().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+    let reason = parts.get(1).unwrap_or(&"unknown").to_string();
+
+    (reason, timestamp)
+}
+
+fn collect_bak_files(dir: &Path, entries: &mut Vec<BackupEntry>, depth: usize) {
+    if depth > 3 {
+        return;
+    }
+    let Ok(dir_entries) = fs::read_dir(dir) else {
+        return;
+    };
+
+    for entry in dir_entries.flatten() {
+        let path = entry.path();
+        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            if path.is_file() && name.contains(".bak.") {
+                let metadata = fs::metadata(&path).ok();
+                let size = metadata.map(|m| m.len()).unwrap_or(0);
+                let timestamp = name
+                    .rsplit('.')
+                    .next()
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .unwrap_or(0);
+                entries.push(BackupEntry {
+                    path: path.to_string_lossy().to_string(),
+                    file_name: name.to_string(),
+                    reason: "file-backup".to_string(),
+                    timestamp,
+                    size_bytes: size,
+                    backup_type: "bak".to_string(),
+                });
+            }
+            if path.is_dir() && !should_skip_dir(name) {
+                collect_bak_files(&path, entries, depth + 1);
+            }
+        }
+    }
+}
+
 fn collect_env_files(
     current: &Path,
     root: &Path,
@@ -615,7 +714,8 @@ pub fn run() {
             infer_project_name,
             append_missing_env_keys,
             upsert_env_key,
-            write_project_backup
+            write_project_backup,
+            list_project_backups
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
