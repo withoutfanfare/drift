@@ -4,7 +4,6 @@ import BaseButton from "../ui/BaseButton.vue";
 
 const emit = defineEmits<{
   loadFiles: [files: File[]];
-  scan: [];
   loadSample: [];
 }>();
 
@@ -23,7 +22,6 @@ function onFileChange(event: Event) {
 <template>
   <div class="flex flex-wrap gap-2">
     <BaseButton variant="primary" size="sm" @click="fileInputRef?.click()">Load .env files</BaseButton>
-    <BaseButton variant="tertiary" size="sm" @click="emit('scan')">Scan project</BaseButton>
     <BaseButton variant="tertiary" size="sm" @click="emit('loadSample')">Load sample trio</BaseButton>
   </div>
 

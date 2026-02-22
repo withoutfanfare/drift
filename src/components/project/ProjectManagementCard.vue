@@ -29,7 +29,7 @@ const scanning = ref(false);
 const settingsExpanded = ref(false);
 const confirmingClear = ref(false);
 
-function onSaveProject(name: string, rootPath: string) {
+async function onSaveProject(name: string, rootPath: string) {
   if (!name || !rootPath) {
     setStatus("Project name and root path are required.");
     return;
@@ -37,6 +37,12 @@ function onSaveProject(name: string, rootPath: string) {
   const msg = saveProject(name, rootPath);
   if (msg) setStatus(msg);
   log("success", `Project saved: ${name}`, undefined, activeProject.value?.id);
+
+  // Auto-scan if the project has a valid root path and no sets loaded yet
+  const project = activeProject.value;
+  if (project && project.rootPath.trim() && props.sets.length === 0) {
+    await onScan();
+  }
 }
 
 async function createProjectBackup(reason: string): Promise<string | null> {
@@ -259,16 +265,28 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
   <GlassCard>
     <div class="flex items-baseline justify-between gap-3 mb-4">
       <h2 class="text-[17px] font-semibold text-text-primary">.env files</h2>
-      <span v-if="sets.length > 0" class="text-xs text-text-muted">
-        {{ sets.length }} file{{ sets.length !== 1 ? 's' : '' }} loaded
-      </span>
+      <div class="flex items-center gap-2">
+        <button
+          class="focus-ring rounded-[var(--radius-md)] p-1 text-text-muted hover:text-text-primary transition-colors"
+          title="Re-scan project folder"
+          :disabled="scanning"
+          @click="onScan"
+        >
+          <svg class="h-3.5 w-3.5" :class="scanning ? 'animate-spin' : ''" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M23 4v6h-6M1 20v-6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <span v-if="sets.length > 0" class="text-xs text-text-muted">
+          {{ sets.length }} file{{ sets.length !== 1 ? 's' : '' }} loaded
+        </span>
+      </div>
     </div>
 
     <!-- Loading actions -->
     <div class="mb-4">
       <FileUploadActions
         @load-files="onLoadFiles"
-        @scan="onScan"
         @load-sample="onLoadSample"
       />
     </div>
