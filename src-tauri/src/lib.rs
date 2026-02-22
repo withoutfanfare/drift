@@ -37,6 +37,23 @@ struct UpsertResult {
     updated_content: String,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProjectBackupSet {
+    name: String,
+    role: String,
+    source: String,
+    file_path: Option<String>,
+    raw_text: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProjectBackupResult {
+    backup_path: String,
+    item_count: usize,
+}
+
 #[tauri::command]
 fn scan_env_files(project_root: String) -> Result<Vec<ScannedEnvFile>, String> {
     let root = PathBuf::from(project_root.trim());
@@ -54,6 +71,30 @@ fn scan_env_files(project_root: String) -> Result<Vec<ScannedEnvFile>, String> {
     files.sort_by(|a, b| a.path.cmp(&b.path));
 
     Ok(files)
+}
+
+#[tauri::command]
+fn infer_project_name(project_root: String) -> Result<String, String> {
+    let trimmed = project_root.trim();
+    if trimmed.is_empty() {
+        return Err("Project path is required".to_string());
+    }
+
+    let root = PathBuf::from(trimmed);
+
+    if !root.exists() {
+        return Err("Project path does not exist".to_string());
+    }
+
+    if !root.is_dir() {
+        return Err("Project path is not a directory".to_string());
+    }
+
+    if let Some(name) = infer_project_name_from_env(&root) {
+        return Ok(name);
+    }
+
+    Ok(humanize_project_name_from_path(&root))
 }
 
 #[tauri::command]
@@ -125,7 +166,7 @@ fn append_missing_env_keys(
         updated.push_str(&format!("{}={}\n", key, format_env_value(value)));
     }
 
-    fs::write(&path, &updated).map_err(|error| format!("Failed to update target env file: {}", error))?;
+    atomic_write(&path, &updated)?;
 
     Ok(PatchResult {
         appended_count: append_entries.len(),
@@ -198,13 +239,61 @@ fn upsert_env_key(
         None
     };
 
-    fs::write(&path, &updated).map_err(|error| format!("Failed to update target env file: {}", error))?;
+    atomic_write(&path, &updated)?;
 
     Ok(UpsertResult {
         matched_count,
         appended,
         backup_path,
         updated_content: updated,
+    })
+}
+
+#[tauri::command]
+fn write_project_backup(
+    project_name: String,
+    project_root: String,
+    reason: String,
+    sets: Vec<ProjectBackupSet>,
+) -> Result<ProjectBackupResult, String> {
+    let root = PathBuf::from(project_root.trim());
+    let backup_dir = if root.exists() && root.is_dir() {
+        root.join(".drift-backups")
+    } else {
+        std::env::temp_dir().join("drift-backups")
+    };
+
+    fs::create_dir_all(&backup_dir)
+        .map_err(|error| format!("Failed to create backup directory: {}", error))?;
+
+    let timestamp = unix_timestamp();
+    let filename = format!(
+        "drift-{}-{}-{}.json",
+        sanitize_filename(&project_name),
+        sanitize_filename(&reason),
+        timestamp
+    );
+    let backup_path = backup_dir.join(filename);
+
+    let set_count = sets.len();
+    let payload = serde_json::json!({
+        "generatedAt": timestamp,
+        "projectName": project_name,
+        "projectRoot": project_root,
+        "reason": reason,
+        "setCount": set_count,
+        "sets": sets,
+    });
+
+    let content = serde_json::to_string_pretty(&payload)
+        .map_err(|error| format!("Failed to serialize backup payload: {}", error))?;
+
+    fs::write(&backup_path, content)
+        .map_err(|error| format!("Failed to write backup file: {}", error))?;
+
+    Ok(ProjectBackupResult {
+        backup_path: backup_path.to_string_lossy().to_string(),
+        item_count: set_count,
     })
 }
 
@@ -233,7 +322,17 @@ fn collect_env_files(
             None => continue,
         };
 
-        if path.is_dir() {
+        // Skip symlinks to prevent traversal outside the project tree
+        let file_type = match entry.file_type() {
+            Ok(ft) => ft,
+            Err(_) => continue,
+        };
+
+        if file_type.is_symlink() {
+            continue;
+        }
+
+        if file_type.is_dir() {
             if should_skip_dir(file_name) {
                 continue;
             }
@@ -241,7 +340,7 @@ fn collect_env_files(
             continue;
         }
 
-        if !path.is_file() || !is_env_file(file_name) {
+        if !file_type.is_file() || !is_env_file(file_name) {
             continue;
         }
 
@@ -273,6 +372,98 @@ fn collect_env_files(
     }
 
     Ok(())
+}
+
+fn infer_project_name_from_env(root: &Path) -> Option<String> {
+    let env_path = root.join(".env");
+    if !env_path.exists() || !env_path.is_file() {
+        return None;
+    }
+
+    let content = fs::read_to_string(env_path).ok()?;
+    parse_named_env_value(&content, "APP_NAME")
+}
+
+fn parse_named_env_value(content: &str, target_key: &str) -> Option<String> {
+    for raw_line in content.lines() {
+        let line = raw_line.trim();
+
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        let without_export = line.strip_prefix("export ").unwrap_or(line).trim();
+        let Some(eq_index) = without_export.find('=') else {
+            continue;
+        };
+
+        if eq_index == 0 {
+            continue;
+        }
+
+        let key = without_export[..eq_index].trim();
+        if key != target_key {
+            continue;
+        }
+
+        let raw_value = without_export[eq_index + 1..].trim();
+        let value = parse_env_value(raw_value);
+        if !value.is_empty() {
+            return Some(value);
+        }
+    }
+
+    None
+}
+
+fn parse_env_value(raw: &str) -> String {
+    let mut value = raw.trim();
+
+    if value.is_empty() {
+        return String::new();
+    }
+
+    if value.starts_with('"') && value.ends_with('"') && value.len() >= 2 {
+        value = &value[1..value.len() - 1];
+        return value.replace("\\\"", "\"").trim().to_string();
+    }
+
+    if value.starts_with('\'') && value.ends_with('\'') && value.len() >= 2 {
+        value = &value[1..value.len() - 1];
+        return value.replace("\\'", "'").trim().to_string();
+    }
+
+    if let Some(comment_start) = value.find(" #") {
+        value = value[..comment_start].trim();
+    }
+
+    value.to_string()
+}
+
+fn humanize_project_name_from_path(root: &Path) -> String {
+    let fallback = root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name.trim())
+        .filter(|name| !name.is_empty())
+        .unwrap_or("Project");
+
+    let mut words = Vec::new();
+    for part in fallback.split(|ch: char| !ch.is_ascii_alphanumeric()) {
+        if part.is_empty() {
+            continue;
+        }
+        let mut chars = part.chars();
+        if let Some(first) = chars.next() {
+            words.push(format!("{}{}", first.to_ascii_uppercase(), chars.as_str()));
+        }
+    }
+
+    if words.is_empty() {
+        "Project".to_string()
+    } else {
+        words.join(" ")
+    }
 }
 
 fn should_skip_dir(name: &str) -> bool {
@@ -359,29 +550,72 @@ fn format_env_value(value: &str) -> String {
         return String::new();
     }
 
-    if value.contains(char::is_whitespace) || value.contains('#') {
-        let escaped = value.replace('"', "\\\"");
+    // Strip newlines and carriage returns that would corrupt .env format
+    let sanitised: String = value.chars().filter(|&ch| ch != '\n' && ch != '\r').collect();
+
+    if sanitised.contains(char::is_whitespace) || sanitised.contains('#') {
+        let escaped = sanitised.replace('"', "\\\"");
         return format!("\"{}\"", escaped);
     }
 
-    value.to_string()
+    sanitised
+}
+
+fn sanitize_filename(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+
+    for ch in input.chars() {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch.to_ascii_lowercase());
+        } else if ch == '-' || ch == '_' {
+            out.push(ch);
+        } else {
+            out.push('-');
+        }
+    }
+
+    let trimmed = out.trim_matches('-');
+    if trimmed.is_empty() {
+        "backup".to_string()
+    } else {
+        trimmed.to_string()
+    }
 }
 
 fn unix_timestamp() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())
-        .unwrap_or(0)
+        .unwrap_or_else(|_| {
+            eprintln!("Warning: system clock before UNIX epoch, using fallback timestamp");
+            std::process::id() as u64
+        })
+}
+
+fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
+    let tmp_path = path.with_extension("drift-tmp");
+    fs::write(&tmp_path, content)
+        .map_err(|error| format!("Failed to write temporary file: {}", error))?;
+    fs::rename(&tmp_path, path)
+        .map_err(|error| {
+            // Clean up temp file on rename failure
+            let _ = fs::remove_file(&tmp_path);
+            format!("Failed to rename temporary file: {}", error)
+        })?;
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             scan_env_files,
+            infer_project_name,
             append_missing_env_keys,
-            upsert_env_key
+            upsert_env_key,
+            write_project_backup
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

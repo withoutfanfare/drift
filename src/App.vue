@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
+import type { AppPage } from "./types";
 import { useProjects } from "./composables/useProjects";
 import { useEnvSets } from "./composables/useEnvSets";
 import { analyzeRows } from "./composables/useAnalysis";
@@ -16,7 +17,6 @@ const { projects, activeProjectId, activeProject, saveActiveProjectId } = usePro
 const { currentSets } = useEnvSets();
 
 const analysis = computed(() => analyzeRows(currentSets.value));
-type AppPage = "dashboard" | "projects" | "help";
 const PAGE_STORAGE_KEY = "edm.page.v1";
 
 function loadPage(): AppPage {
@@ -27,17 +27,15 @@ function loadPage(): AppPage {
 
 const page = ref<AppPage>(loadPage());
 
-watch(page, (value) => {
-  localStorage.setItem(PAGE_STORAGE_KEY, value);
-});
-
 function openPage(next: AppPage) {
   page.value = next;
+  localStorage.setItem(PAGE_STORAGE_KEY, next);
 }
 
 function onSelectProject(id: string) {
   saveActiveProjectId(id);
   page.value = "dashboard";
+  localStorage.setItem(PAGE_STORAGE_KEY, "dashboard");
 }
 
 function onProjectChange(id: string) {
@@ -71,10 +69,11 @@ function onProjectChange(id: string) {
       <button
         v-for="navPage in (['dashboard', 'projects', 'help'] as AppPage[])"
         :key="navPage"
-        class="rounded-[var(--radius-md)] px-3 py-1.5 text-[13px] capitalize transition-colors"
+        class="focus-ring rounded-[var(--radius-md)] px-3 py-1.5 text-[13px] capitalize transition-colors"
         :class="page === navPage
           ? 'bg-accent-muted text-accent font-medium'
           : 'text-text-secondary hover:text-text-primary'"
+        :aria-current="page === navPage ? 'page' : undefined"
         @click="openPage(navPage)"
       >
         {{ navPage === 'help' ? 'Help' : navPage === 'projects' ? 'Projects' : 'Dashboard' }}

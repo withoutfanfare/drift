@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import type { ProjectProfile } from "../../types";
+import type { AppPage, ProjectProfile } from "../../types";
 import { useEnvSets } from "../../composables/useEnvSets";
 import { computed } from "vue";
-
-type AppPage = "dashboard" | "projects" | "help";
 
 const props = defineProps<{
   projects: ProjectProfile[];
@@ -49,7 +47,7 @@ function onProjectClick(project: ProjectProfile) {
           Projects
         </span>
         <button
-          class="text-text-muted hover:text-text-primary transition-colors p-0.5 -mr-0.5 rounded"
+          class="focus-ring text-text-muted hover:text-text-primary transition-colors p-0.5 -mr-0.5 rounded"
           title="Manage projects"
           @click="emit('navigate', 'projects')"
         >
@@ -59,29 +57,33 @@ function onProjectClick(project: ProjectProfile) {
         </button>
       </div>
 
-      <nav class="space-y-0.5" aria-label="Project list">
+      <nav v-if="projects.length > 0" class="space-y-0.5" aria-label="Project list">
         <button
           v-for="project in projects"
           :key="project.id"
-          class="w-full rounded-[var(--radius-md)] px-2 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2 group"
+          class="focus-ring w-full rounded-[var(--radius-md)] px-2 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2 group"
           :class="project.id === activeProjectId
             ? 'bg-accent-muted text-accent font-medium'
             : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'"
+          :aria-current="project.id === activeProjectId ? 'true' : undefined"
           @click="onProjectClick(project)"
         >
           <svg class="h-3.5 w-3.5 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M3.5 6.5H9L10.8 8.5H20.5V18.5H3.5V6.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
           </svg>
           <span class="truncate flex-1">{{ project.name }}</span>
-          <span class="text-[11px] tabular-nums" :class="project.id === activeProjectId ? 'text-accent/60' : 'text-text-muted'">
+          <span
+            class="text-[11px] tabular-nums"
+            :class="project.id === activeProjectId ? 'text-accent/60' : 'text-text-muted'"
+            :aria-label="(setCountsByProject[project.id] ?? 0) + ' env sets'"
+          >
             {{ (setCountsByProject[project.id] ?? 0) > 0 ? setCountsByProject[project.id] : '\u00B7' }}
           </span>
         </button>
-
-        <p v-if="projects.length === 0" class="px-2 py-1.5 text-[13px] text-text-muted italic">
-          No projects yet
-        </p>
       </nav>
+      <p v-else class="px-2 py-1.5 text-[13px] text-text-muted italic">
+        No projects yet
+      </p>
     </div>
 
     <!-- Divider -->
@@ -91,7 +93,7 @@ function onProjectClick(project: ProjectProfile) {
     <div class="px-3 pt-2">
       <nav class="space-y-0.5" aria-label="Primary navigation">
         <button
-          class="w-full rounded-[var(--radius-md)] px-2 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2"
+          class="focus-ring w-full rounded-[var(--radius-md)] px-2 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2"
           :class="page === 'dashboard'
             ? 'bg-accent-muted text-accent font-medium'
             : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'"
@@ -105,7 +107,7 @@ function onProjectClick(project: ProjectProfile) {
           Dashboard
         </button>
         <button
-          class="w-full rounded-[var(--radius-md)] px-2 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2"
+          class="focus-ring w-full rounded-[var(--radius-md)] px-2 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2"
           :class="page === 'help'
             ? 'bg-accent-muted text-accent font-medium'
             : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'"
