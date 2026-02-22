@@ -90,3 +90,14 @@ export interface LocalUpsertResult {
   matchedCount: number;
   appended: boolean;
 }
+
+export type ActivityCategory = "info" | "write" | "destructive" | "success" | "error";
+
+export interface ActivityEntry {
+  id: string;
+  timestamp: number;
+  category: ActivityCategory;
+  summary: string;
+  detail?: string;
+  projectId?: string;
+}
