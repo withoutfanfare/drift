@@ -20,11 +20,13 @@ export function inferProjectName(projectRoot: string): Promise<string> {
 
 export function appendMissingEnvKeys(
   targetPath: string,
+  projectRoot: string,
   entries: MissingEntry[],
   createBackup: boolean,
 ): Promise<PatchResult> {
   return invoke<PatchResult>("append_missing_env_keys", {
     targetPath,
+    projectRoot,
     entries,
     createBackup,
   });
@@ -32,12 +34,14 @@ export function appendMissingEnvKeys(
 
 export function upsertEnvKey(
   targetPath: string,
+  projectRoot: string,
   key: string,
   value: string,
   createBackup: boolean,
 ): Promise<UpsertResult> {
   return invoke<UpsertResult>("upsert_env_key", {
     targetPath,
+    projectRoot,
     key,
     value,
     createBackup,
@@ -46,11 +50,13 @@ export function upsertEnvKey(
 
 export function writeEnvFile(
   targetPath: string,
+  projectRoot: string,
   content: string,
   createBackup: boolean,
 ): Promise<WriteEnvResult> {
   return invoke<WriteEnvResult>("write_env_file", {
     targetPath,
+    projectRoot,
     content,
     createBackup,
   });
