@@ -9,5 +9,5 @@
 - Items attempted but failed: none
 - Branch: feature/security-reactivity-fixes
 - Tests passing: yes (6/6 Rust tests)
-- Build status: pending
+- Build status: success (Drift.app + DMG bundled)
 - Notes: Frontend `useTauriCommands.ts` and `ComparisonCard.vue` updated to pass `activeProject.rootPath` through to all Rust write commands. The `tempfile` crate added as a dev-dependency for test isolation.
