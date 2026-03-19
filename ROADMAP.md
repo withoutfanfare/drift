@@ -88,37 +88,37 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 
 These items implement the Scooda design system (derived from the Dalil app styleguide) to achieve premium visual uniformity across all Tauri applications. Items are ordered by dependency — foundation must complete before migration, migration before polish.
 
-### [Foundation] Integrate @scooda/ui shared component library and design tokens
+### [Foundation] Integrate @stuntrocket/ui shared component library and design tokens
 - **Priority:** P1 (critical)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
 - **Status:** pending
-- **Description:** Drift uses Vue 3 + Tailwind CSS 4 with its own "Spool" dark glassmorphic design system. Adopting the Scooda design system requires installing @scooda/ui from the local Verdaccio registry, replacing the Spool @theme tokens with Scooda shared tokens, and switching from a dark-only design to a full light/dark mode system. The Spool design has some overlap with Scooda (glassmorphism, blur effects) but the colour palette, typography (Poppins), and spacing scale need alignment.
+- **Description:** Drift uses Vue 3 + Tailwind CSS 4 with its own "Spool" dark glassmorphic design system. Adopting the Scooda design system requires installing @stuntrocket/ui from the local Verdaccio registry, replacing the Spool @theme tokens with Scooda shared tokens, and switching from a dark-only design to a full light/dark mode system. The Spool design has some overlap with Scooda (glassmorphism, blur effects) but the colour palette, typography (Poppins), and spacing scale need alignment.
 - **Acceptance criteria:**
-  - .npmrc configured with @scooda:registry=http://localhost:4873
-  - @scooda/ui installed as a dependency
+  - .npmrc configured with @stuntrocket:registry=http://localhost:4873
+  - @stuntrocket/ui installed as a dependency
   - Spool @theme block in src/styles/main.css replaced with Scooda tokens.css import
   - Poppins font loaded as primary sans font (replacing system font stack)
   - Colour palette aligned: accent #60A5FA → Scooda accent #2563EB/#60A5FA with full light/dark tokens
   - Light mode added (Drift is currently dark-only; Scooda supports both)
   - Typography scale matches Scooda: body 15px, headings per styleguide
 
-### [UI Migration] Replace Spool components with @scooda/ui shared components
+### [UI Migration] Replace Spool components with @stuntrocket/ui shared components
 - **Priority:** P1 (critical)
 - **Size:** XL (8hrs+)
 - **Added:** 2026-03-19
 - **Status:** pending
-- **Description:** Replace all Spool design system components (GlassCard, BaseButton, BaseSelect, BaseInput, BaseTextarea, KpiCard) with @scooda/ui equivalents. The comparison matrix, filter row, project management views, and inline drift editor all need to be rebuilt with shared components. This is the largest migration item and may need sub-tasks per component category.
+- **Description:** Replace all Spool design system components (GlassCard, BaseButton, BaseSelect, BaseInput, BaseTextarea, KpiCard) with @stuntrocket/ui equivalents. The comparison matrix, filter row, project management views, and inline drift editor all need to be rebuilt with shared components. This is the largest migration item and may need sub-tasks per component category.
 - **Acceptance criteria:**
-  - GlassCard → @scooda/ui Card with correct surface/blur/shadow properties
-  - BaseButton → @scooda/ui Button (primary, secondary, icon variants)
-  - BaseSelect → @scooda/ui Select with custom chevron and focus styling
-  - BaseInput → @scooda/ui Input with correct border/focus behaviour
-  - BaseTextarea → @scooda/ui Textarea
-  - KpiCard/KpiBar → @scooda/ui stat card pattern
-  - All modals use @scooda/ui Modal pattern
-  - All toasts use @scooda/ui Toast with status colours
-  - AmbientBackground component replaced with @scooda/ui ambient blob pattern
+  - GlassCard → @stuntrocket/ui Card with correct surface/blur/shadow properties
+  - BaseButton → @stuntrocket/ui Button (primary, secondary, icon variants)
+  - BaseSelect → @stuntrocket/ui Select with custom chevron and focus styling
+  - BaseInput → @stuntrocket/ui Input with correct border/focus behaviour
+  - BaseTextarea → @stuntrocket/ui Textarea
+  - KpiCard/KpiBar → @stuntrocket/ui stat card pattern
+  - All modals use @stuntrocket/ui Modal pattern
+  - All toasts use @stuntrocket/ui Toast with status colours
+  - AmbientBackground component replaced with @stuntrocket/ui ambient blob pattern
   - No Spool-specific component files remain
 
 ### [Polish] Achieve full Scooda styleguide visual conformance
