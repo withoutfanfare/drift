@@ -152,10 +152,15 @@ export function useEnvSets() {
   }
 
   function applyRawToSet(set: EnvSet, rawText: string) {
+    const index = envSets.value.findIndex((s) => s.id === set.id);
+    if (index === -1) return;
     const parsed = parseEnv(rawText);
-    set.rawText = rawText;
-    set.values = parsed.values;
-    set.duplicates = parsed.duplicates;
+    envSets.value.splice(index, 1, {
+      ...envSets.value[index],
+      rawText,
+      values: parsed.values,
+      duplicates: parsed.duplicates,
+    });
     persistSets();
   }
 

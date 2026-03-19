@@ -27,6 +27,8 @@ const { applyRawToSet } = useEnvSets();
 const { statusMessage, setStatus } = useStatus();
 const { log } = useActivityLog();
 
+const { activeProject } = useProjects();
+
 const filter = ref("all");
 const search = ref("");
 const referenceSetId = ref("");
@@ -202,7 +204,7 @@ async function executePatch() {
     for (const entry of entries) {
       recordOriginalValue(targetSet.value.id, entry.key);
     }
-    const result = await appendMissingEnvKeys(targetSet.value.filePath, entries, true);
+    const result = await appendMissingEnvKeys(targetSet.value.filePath, activeProject.value!.rootPath, entries, true);
     applyRawToSet(targetSet.value, result.updatedContent);
     const backupInfo = result.backupPath ? ` backup: ${result.backupPath}` : "";
     setStatus(`Patched ${targetSet.value.name}: appended ${result.appendedCount}, skipped ${result.skippedExisting}.${backupInfo}`);
@@ -245,7 +247,7 @@ async function onApplyFile(targetId: string, key: string, value: string) {
 
   recordOriginalValue(targetId, key);
   try {
-    const result = await upsertEnvKey(target.filePath, key, value, true);
+    const result = await upsertEnvKey(target.filePath, activeProject.value!.rootPath, key, value, true);
     applyRawToSet(target, result.updatedContent);
     const updateMode = result.appended ? "added" : "updated";
     const backupInfo = result.backupPath ? ` backup: ${result.backupPath}` : "";
@@ -305,7 +307,7 @@ async function onSaveFile(setId: string) {
 
   savingSetId.value = setId;
   try {
-    const result = await writeEnvFile(set.filePath, set.rawText, true);
+    const result = await writeEnvFile(set.filePath, activeProject.value!.rootPath, set.rawText, true);
     const backupInfo = result.backupPath ? ` (backup created)` : "";
 
     // Remove all session edit entries for this set
