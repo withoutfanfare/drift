@@ -63,7 +63,7 @@ struct ProjectBackupResult {
     item_count: usize,
 }
 
-fn validate_env_path(raw_path: &str) -> Result<PathBuf, String> {
+fn validate_env_path(raw_path: &str, project_root: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(raw_path.trim());
 
     let canonical = std::fs::canonicalize(&path)
@@ -80,6 +80,17 @@ fn validate_env_path(raw_path: &str) -> Result<PathBuf, String> {
         .unwrap_or("");
     if !file_name.starts_with(".env") {
         return Err("Target path is not an .env file".to_string());
+    }
+
+    // Confine writes to the registered project directory
+    let root = PathBuf::from(project_root.trim());
+    let canonical_root = std::fs::canonicalize(&root)
+        .map_err(|e| format!("Cannot resolve project root: {}", e))?;
+
+    if !canonical.starts_with(&canonical_root) {
+        return Err(
+            "Path traversal denied: target path is outside the project directory".to_string(),
+        );
     }
 
     Ok(canonical)
@@ -131,10 +142,11 @@ fn infer_project_name(project_root: String) -> Result<String, String> {
 #[tauri::command]
 fn append_missing_env_keys(
     target_path: String,
+    project_root: String,
     entries: Vec<MissingEntry>,
     create_backup: bool,
 ) -> Result<PatchResult, String> {
-    let path = validate_env_path(&target_path)?;
+    let path = validate_env_path(&target_path, &project_root)?;
 
     let original = fs::read_to_string(&path)
         .map_err(|error| format!("Failed to read target env file: {}", error))?;
@@ -202,6 +214,7 @@ fn append_missing_env_keys(
 #[tauri::command]
 fn upsert_env_key(
     target_path: String,
+    project_root: String,
     key: String,
     value: String,
     create_backup: bool,
@@ -212,7 +225,7 @@ fn upsert_env_key(
         return Err("Invalid env key".to_string());
     }
 
-    let path = validate_env_path(&target_path)?;
+    let path = validate_env_path(&target_path, &project_root)?;
 
     let original = fs::read_to_string(&path)
         .map_err(|error| format!("Failed to read target env file: {}", error))?;
@@ -273,6 +286,7 @@ fn upsert_env_key(
 #[tauri::command]
 fn write_env_file(
     target_path: String,
+    project_root: String,
     content: String,
     create_backup: bool,
 ) -> Result<WriteEnvResult, String> {
@@ -284,7 +298,7 @@ fn write_env_file(
         ));
     }
 
-    let path = validate_env_path(&target_path)?;
+    let path = validate_env_path(&target_path, &project_root)?;
 
     let original = if create_backup {
         Some(
@@ -759,13 +773,13 @@ fn unix_timestamp() -> u64 {
         })
 }
 
+static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
+
 fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
+    let seq = WRITE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let pid = std::process::id();
     let file_name = path.file_name().unwrap_or_default().to_string_lossy();
-    let tmp_path = path.with_file_name(format!(".{}.drift-tmp.{}", file_name, nonce));
+    let tmp_path = path.with_file_name(format!(".{}.drift-tmp.{}.{}", file_name, pid, seq));
     fs::write(&tmp_path, content)
         .map_err(|error| format!("Failed to write temporary file: {}", error))?;
     fs::rename(&tmp_path, path)
@@ -775,6 +789,136 @@ fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
             format!("Failed to rename temporary file: {}", error)
         })?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn create_temp_project() -> (tempfile::TempDir, PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let env_path = dir.path().join(".env");
+        fs::write(&env_path, "APP_NAME=Test\n").unwrap();
+        (dir, env_path)
+    }
+
+    #[test]
+    fn validate_env_path_accepts_file_within_project() {
+        let (dir, env_path) = create_temp_project();
+        let result = validate_env_path(
+            env_path.to_str().unwrap(),
+            dir.path().to_str().unwrap(),
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn validate_env_path_rejects_traversal() {
+        let (dir, _env_path) = create_temp_project();
+
+        // Create a .env file outside the project
+        let outside_dir = tempfile::tempdir().unwrap();
+        let outside_env = outside_dir.path().join(".env");
+        fs::write(&outside_env, "SECRET=value\n").unwrap();
+
+        let result = validate_env_path(
+            outside_env.to_str().unwrap(),
+            dir.path().to_str().unwrap(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Path traversal denied"));
+    }
+
+    #[test]
+    fn validate_env_path_rejects_dotdot_traversal() {
+        let (dir, _env_path) = create_temp_project();
+
+        // Create a sibling directory with a .env file
+        let sibling_dir = dir.path().parent().unwrap().join("sibling-project");
+        fs::create_dir_all(&sibling_dir).unwrap();
+        let sibling_env = sibling_dir.join(".env");
+        fs::write(&sibling_env, "LEAKED=true\n").unwrap();
+
+        // Attempt traversal via ../sibling-project/.env
+        let traversal_path = dir.path().join("..").join("sibling-project").join(".env");
+        let result = validate_env_path(
+            traversal_path.to_str().unwrap(),
+            dir.path().to_str().unwrap(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Path traversal denied"));
+
+        // Clean up sibling
+        let _ = fs::remove_dir_all(&sibling_dir);
+    }
+
+    #[test]
+    fn validate_env_path_rejects_symlink_escape() {
+        let (dir, _env_path) = create_temp_project();
+
+        // Create a target outside the project
+        let outside_dir = tempfile::tempdir().unwrap();
+        let outside_env = outside_dir.path().join(".env.secret");
+        fs::write(&outside_env, "LEAKED=true\n").unwrap();
+
+        // Create a symlink inside the project pointing outside
+        let symlink_path = dir.path().join(".env.link");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&outside_env, &symlink_path).unwrap();
+
+        #[cfg(unix)]
+        {
+            let result = validate_env_path(
+                symlink_path.to_str().unwrap(),
+                dir.path().to_str().unwrap(),
+            );
+            assert!(result.is_err());
+            assert!(result.unwrap_err().contains("Path traversal denied"));
+        }
+    }
+
+    #[test]
+    fn validate_env_path_rejects_non_env_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let non_env = dir.path().join("config.json");
+        fs::write(&non_env, "{}").unwrap();
+
+        let result = validate_env_path(
+            non_env.to_str().unwrap(),
+            dir.path().to_str().unwrap(),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not an .env file"));
+    }
+
+    #[test]
+    fn atomic_write_produces_unique_temp_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join(".env");
+        fs::write(&target, "initial").unwrap();
+
+        // Run multiple writes — they should not clash
+        for i in 0..10 {
+            atomic_write(&target, &format!("content-{}", i)).unwrap();
+        }
+
+        let final_content = fs::read_to_string(&target).unwrap();
+        assert_eq!(final_content, "content-9");
+
+        // No leftover temp files
+        let leftover: Vec<_> = fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.file_name()
+                    .to_str()
+                    .map(|n| n.contains("drift-tmp"))
+                    .unwrap_or(false)
+            })
+            .collect();
+        assert!(leftover.is_empty(), "Temp files should be cleaned up");
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
