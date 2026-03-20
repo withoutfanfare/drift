@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { useId } from "vue";
+import { SFormField, STextarea } from "@stuntrocket/ui";
 
 const model = defineModel<string>({ required: true });
-const textareaId = useId();
 
 const props = defineProps<{
   label?: string;
@@ -13,15 +12,17 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div>
-    <label v-if="label" :for="textareaId" class="block mb-1 text-xs text-text-tertiary">{{ label }}</label>
-    <textarea
-      :id="textareaId"
+  <SFormField v-if="label" :label="label">
+    <STextarea
       v-model="model"
       :placeholder="placeholder"
       :rows="props.rows ?? 5"
-      :aria-label="props.ariaLabel"
-      class="w-full rounded-[var(--radius-md)] border border-border-default bg-surface-1 px-3 py-2 text-sm text-text-primary font-mono placeholder:text-text-muted focus-ring resize-y"
     />
-  </div>
+  </SFormField>
+  <STextarea
+    v-else
+    v-model="model"
+    :placeholder="placeholder"
+    :rows="props.rows ?? 5"
+  />
 </template>

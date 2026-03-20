@@ -2,6 +2,7 @@
 import type { AppPage, ProjectProfile } from "../../types";
 import { useEnvSets } from "../../composables/useEnvSets";
 import { computed } from "vue";
+import { SSidebar, SSidebarLink } from "@stuntrocket/ui";
 
 const props = defineProps<{
   projects: ProjectProfile[];
@@ -35,11 +36,11 @@ function onProjectClick(project: ProjectProfile) {
 </script>
 
 <template>
-  <aside
-    class="w-[220px] shrink-0 bg-surface-0 border-r border-border-default flex flex-col max-[1024px]:hidden"
-  >
-    <!-- Titlebar drag region -->
-    <div class="h-7 w-full shrink-0" style="-webkit-app-region: drag;" />
+  <SSidebar width="220px" class="max-[1024px]:hidden">
+    <template #header>
+      <!-- Titlebar drag region -->
+      <div class="h-7 w-full shrink-0" style="-webkit-app-region: drag;" />
+    </template>
 
     <!-- Projects group -->
     <div class="px-3 pb-2" style="-webkit-app-region: no-drag;">
@@ -93,12 +94,8 @@ function onProjectClick(project: ProjectProfile) {
     <!-- Navigation group -->
     <div class="px-3 pt-2" style="-webkit-app-region: no-drag;">
       <nav class="space-y-0.5" aria-label="Primary navigation">
-        <button
-          class="focus-ring w-full rounded-[var(--radius-md)] px-2 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2"
-          :class="page === 'dashboard'
-            ? 'bg-accent-muted text-accent font-medium'
-            : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'"
-          :aria-current="page === 'dashboard' ? 'page' : undefined"
+        <SSidebarLink
+          :active="page === 'dashboard'"
           @click="emit('navigate', 'dashboard')"
         >
           <svg class="h-3.5 w-3.5 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -106,13 +103,9 @@ function onProjectClick(project: ProjectProfile) {
             <path d="M6.5 10.5V19H17.5V10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           Dashboard
-        </button>
-        <button
-          class="focus-ring w-full rounded-[var(--radius-md)] px-2 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2"
-          :class="page === 'help'
-            ? 'bg-accent-muted text-accent font-medium'
-            : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'"
-          :aria-current="page === 'help' ? 'page' : undefined"
+        </SSidebarLink>
+        <SSidebarLink
+          :active="page === 'help'"
           @click="emit('navigate', 'help')"
         >
           <svg class="h-3.5 w-3.5 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -121,8 +114,8 @@ function onProjectClick(project: ProjectProfile) {
             <circle cx="11.8" cy="16.4" r="1" fill="currentColor" />
           </svg>
           Help
-        </button>
+        </SSidebarLink>
       </nav>
     </div>
-  </aside>
+  </SSidebar>
 </template>

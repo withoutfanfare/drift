@@ -11,10 +11,12 @@
     "tauri:build": "open -a Finder && sleep 2 && tauri build"
   },
   "dependencies": {
+    "@stuntrocket/ui": "^0.7.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-opener": "^2",
-    "vue": "^3.5.28"
+    "vue": "^3.5.28",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.0",

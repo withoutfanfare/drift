@@ -19,6 +19,8 @@ export interface EnvSet {
   filePath?: string;
   values: Record<string, string>;
   duplicates: string[];
+  comments: Record<string, EnvComment>;
+  validationWarnings: EnvValidationWarning[];
 }
 
 export interface KeyAnalysisRow {
@@ -113,4 +115,66 @@ export interface ActivityEntry {
   summary: string;
   detail?: string;
   projectId?: string;
+}
+
+/** Comment documentation extracted from .env files */
+export interface EnvComment {
+  /** Line comment(s) preceding the key (lines starting with #) */
+  above: string[];
+  /** Inline comment after the value (KEY=value # this part) */
+  inline: string | null;
+}
+
+/** Result of validating an .env file's syntax */
+export interface EnvValidationWarning {
+  line: number;
+  message: string;
+  severity: "error" | "warning";
+}
+
+/** A single change history entry for a key */
+export interface ChangeHistoryEntry {
+  key: string;
+  previousValue: string | undefined;
+  newValue: string;
+  timestamp: number;
+  envFilePath: string;
+  envSetName: string;
+}
+
+/** Configuration for drift analysis rules */
+export interface DriftRule {
+  id: string;
+  label: string;
+  enabled: boolean;
+}
+
+/** A flagged value from cross-environment drift analysis */
+export interface DriftWarning {
+  ruleId: string;
+  key: string;
+  setId: string;
+  setName: string;
+  message: string;
+  suggestion: string;
+}
+
+/** Grouping of variables by service prefix */
+export interface VariableGroup {
+  prefix: string;
+  label: string;
+  keys: string[];
+  driftCount: number;
+}
+
+/** Backup rotation result from Rust backend */
+export interface BackupRotationResult {
+  deletedCount: number;
+  deletedPaths: string[];
+}
+
+/** File watcher event from Rust backend */
+export interface FileChangeEvent {
+  path: string;
+  kind: "modified" | "created" | "removed";
 }

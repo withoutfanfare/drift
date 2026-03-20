@@ -1,56 +1,48 @@
 @import "tailwindcss";
+@import "@stuntrocket/ui/tokens.css";
+@import "@stuntrocket/ui/base.css";
+@import "@stuntrocket/ui/scrollbar.css";
+@import "@stuntrocket/ui/ambient.css";
+@source "../";
 
+/* ── Drift accent override (blue) ── */
+.dark {
+  --color-accent: #60a5fa;
+  --color-accent-hover: #93c5fd;
+}
+
+/* ── Drift-specific tokens ──
+   These extend the library with app-specific values
+   that don't have library equivalents. */
 @theme {
-  /* ── Surface layers ── */
+  /* Additional surface layers for Drift's deeper dark UI */
   --color-surface-base: #0e0e0e;
   --color-surface-0: #171717;
   --color-surface-1: #1c1c1e;
   --color-surface-2: #27272a;
   --color-surface-3: #3f3f46;
 
-  /* ── Text hierarchy ── */
-  --color-text-primary: #ededed;
-  --color-text-secondary: #a1a1aa;
-  --color-text-tertiary: #71717a;
+  /* Drift uses a distinct muted text tier below tertiary */
   --color-text-muted: #525252;
 
-  /* ── Accent ── */
-  --color-accent: #60a5fa;
-  --color-accent-hover: #93c5fd;
+  /* Accent-muted for subtle accent backgrounds */
   --color-accent-muted: #60a5fa33;
 
-  /* ── Status colours ── */
-  --color-success: #4ade80;
-  --color-warning: #fbbf24;
-  --color-danger: #f87171;
+  /* Status info alias (same as accent) */
   --color-info: #60a5fa;
 
-  /* ── Borders ── */
-  --color-border-default: #ffffff0f;
-  --color-border-subtle: #ffffff08;
+  /* Border variants */
   --color-border-accent: #60a5fa33;
 
-  /* ── Fonts ── */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", monospace;
-
-  /* ── Radius ── */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 8px;
-  --radius-2xl: 10px;
-
-  /* ── Shadows ── */
+  /* Shadows specific to Drift's glassmorphic panels */
   --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
   --shadow-elevated: 0 16px 48px rgba(0, 0, 0, 0.6);
   --shadow-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
-  /* ── Animations ── */
+  /* Animations */
   --animate-fade-in: fade-in 400ms ease-out both;
   --animate-content-fade-in: content-fade-in 500ms ease-out both;
   --animate-scale-in: scale-in 300ms ease-out both;
-  --animate-blob-drift: blob-drift 22s ease-in-out infinite;
 }
 
 /* ── Keyframes ── */
@@ -67,55 +59,6 @@
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes blob-drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(30px, -40px) scale(1.05); }
-  50% { transform: translate(-20px, 20px) scale(0.97); }
-  75% { transform: translate(15px, 30px) scale(1.03); }
-}
-
-/* ── Global resets ── */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  font-size: 15px;
-  line-height: 1.6;
-  color-scheme: dark;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: var(--font-sans);
-  background: var(--color-surface-base);
-  color: var(--color-text-primary);
-}
-
-/* ── Custom scrollbar ── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-accent-muted);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent);
 }
 
 /* ── Glass card utility ── */
@@ -135,15 +78,4 @@ body {
 
 .focus-ring:focus-visible {
   box-shadow: 0 0 0 2px var(--color-surface-base), 0 0 0 4px var(--color-accent);
-}
-
-/* ── Reduced motion ── */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
 }

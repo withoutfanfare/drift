@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { SCard } from "@stuntrocket/ui";
+
 defineProps<{
   padding?: string;
 }>();
 </script>
 
 <template>
-  <div class="glass-card" :class="padding ?? 'p-5'">
+  <SCard variant="glass" :class="padding ?? 'p-5'">
     <slot />
-  </div>
+  </SCard>
 </template>

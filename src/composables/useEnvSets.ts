@@ -1,6 +1,6 @@
 import { ref, computed } from "vue";
 import type { EnvSet, EnvRole, EnvSource, PersistedSet, ProjectProfile } from "../types";
-import { parseEnv } from "./useEnvParser";
+import { parseEnv, validateEnvSyntax } from "./useEnvParser";
 import { detectRole, roleSort } from "./useRoles";
 import { useProjects } from "./useProjects";
 
@@ -35,6 +35,8 @@ function loadSetsFromStorage(
           filePath: entry.filePath,
           values: env.values,
           duplicates: env.duplicates,
+          comments: env.comments,
+          validationWarnings: validateEnvSyntax(entry.rawText),
         };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
@@ -88,8 +90,9 @@ export function useEnvSets() {
     role?: EnvRole;
     filePath?: string;
   }) {
-    const { values, duplicates } = parseEnv(input.rawText);
+    const { values, duplicates, comments } = parseEnv(input.rawText);
     const role = input.role ?? detectRole(input.name, values);
+    const validationWarnings = validateEnvSyntax(input.rawText);
 
     const existing = input.filePath
       ? envSets.value.find(
@@ -113,6 +116,8 @@ export function useEnvSets() {
           filePath: input.filePath,
           values,
           duplicates,
+          comments,
+          validationWarnings,
           role,
         };
       }
@@ -129,6 +134,8 @@ export function useEnvSets() {
       filePath: input.filePath,
       values,
       duplicates,
+      comments,
+      validationWarnings,
       role,
     });
     persistSets();
@@ -160,6 +167,8 @@ export function useEnvSets() {
       rawText,
       values: parsed.values,
       duplicates: parsed.duplicates,
+      comments: parsed.comments,
+      validationWarnings: validateEnvSyntax(rawText),
     });
     persistSets();
   }

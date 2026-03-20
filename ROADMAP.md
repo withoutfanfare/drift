@@ -125,20 +125,6 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Output written to the project root as .env.example (with confirmation if file already exists)
   - Generated template includes comments indicating which environments define each key
 
-### [Distribution] Add portable project profile export for team env configuration sharing
-- **Priority:** P3 (nice-to-have)
-- **Size:** S (< 1hr)
-- **Added:** 2026-03-21
-- **Status:** pending
-- **Description:** Teams standardising on Drift need a way to share project configurations without manually recreating them on each developer's machine. Exporting a project profile (env set definitions, role assignments, grouping preferences) as a portable JSON file that teammates can import would enable consistent team-wide env management. This is especially valuable when onboarding new developers who need to match the team's established Drift configuration.
-- **Acceptance criteria:**
-  - "Export project" action available from the project context menu
-  - Export produces a JSON file containing: project name, env set definitions (paths and roles), and custom settings
-  - Sensitive values (env file contents) excluded from export by default, with opt-in toggle
-  - Import action validates the exported JSON and shows a preview before applying
-  - Import detects path mismatches (exported paths that don't exist on the target machine) and prompts for remapping
-  - Export/import version stamped for forward compatibility
-
 ### [Feature] Add env variable inline documentation from parsed .env comments
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
@@ -180,6 +166,63 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Duplicate keys highlighted with "last value wins" annotation
   - Lines with syntax issues visually marked in the comparison matrix (if the file is loaded)
   - Validation suppressible per file for intentionally non-standard formats
+
+### [Feature] Add env variable change history tracking across modifications
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-20
+- **Status:** pending
+- **Description:** When Drift patches env files (appending missing keys or upserting values), there is no record of what the previous value was. During active environment management — syncing staging with production, rolling back a configuration change, investigating when a value diverged — developers need to know what changed and when. Tracking a per-key change history (previous value, new value, timestamp, which environment) in localStorage would turn the comparison matrix from a point-in-time view into a temporal audit trail, enabling value-level undo without needing full file backup restoration.
+- **Acceptance criteria:**
+  - Each upsert operation records: key name, previous value, new value, timestamp, target env file path
+  - Change history viewable per-key via a tooltip or expandable row in the comparison matrix
+  - History entries show relative timestamps ("2 hours ago") and absolute timestamps on hover
+  - Maximum history depth configurable (default: 20 entries per key) to limit storage growth
+  - "Revert to previous value" action available from the history view (triggers standard upsert with backup)
+  - History persisted in localStorage alongside existing project data
+
+### [UX/UI] Add keyboard shortcuts for comparison matrix navigation
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-20
+- **Status:** pending
+- **Description:** Every other app in the Tauri portfolio either has keyboard shortcuts implemented or planned, but Drift has none. Developers reviewing env drift across multiple projects need rapid matrix navigation — jumping between environments, expanding grouped variables, triggering patches. Currently all interaction requires mouse clicks, which breaks the flow during rapid triage sessions. Standard navigation shortcuts (arrow keys for cell navigation, Enter to edit, Cmd+S to save, Cmd+F to focus filter) would bring Drift's interaction speed in line with the portfolio standard.
+- **Acceptance criteria:**
+  - Arrow keys navigate between cells in the comparison matrix
+  - Enter opens the inline drift editor for the focused cell
+  - Escape closes the editor without saving
+  - Cmd+F focuses the filter/search input
+  - Cmd+S saves pending changes (triggers patch with backup)
+  - All shortcuts documented in a help overlay (Cmd+/)
+  - No conflicts with system-level macOS shortcuts
+
+### [Quality] Add automatic backup file rotation with configurable retention
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-20
+- **Status:** pending
+- **Description:** The Rust backend creates timestamped `.bak` files before every env file mutation (append and upsert operations), but there is no cleanup mechanism. Over weeks of active use — especially with frequent patching across multiple environments — backup files accumulate indefinitely in project directories, cluttering the file tree and consuming disk space. A configurable retention policy (keep last N backups per env file, default 5) with automatic cleanup after each new backup would prevent unbounded growth whilst maintaining a safety net for recent changes.
+- **Acceptance criteria:**
+  - After creating a new backup, older backups beyond the retention limit are deleted
+  - Retention limit configurable per project (default: 5 backups per env file)
+  - Only Drift-created `.bak` files targeted (identified by naming pattern, not arbitrary `.bak` files)
+  - Deletion logged but not shown as toast (silent housekeeping)
+  - Setting accessible from project configuration
+  - Manual "clean up backups" action available in project settings for one-time cleanup
+
+### [Quality] Add secret value detection warning in comparison matrix
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-20
+- **Status:** pending
+- **Description:** The comparison matrix displays env variable values across environments without any sensitivity awareness. Values that look like API keys, database passwords, JWT secrets, or OAuth tokens are shown identically to innocuous configuration values like APP_NAME or LOG_LEVEL. When generating .env.example templates (existing roadmap item) or sharing screen during pair programming, sensitive values are exposed without warning. Detecting common secret patterns (high-entropy strings, known key prefixes like sk_, pk_, token_, password-like values) and flagging them with a visual indicator would help developers maintain security awareness during drift review sessions and prevent accidental exposure.
+- **Acceptance criteria:**
+  - Values matching common secret patterns flagged with a warning badge in the comparison matrix
+  - Detection patterns include: high-entropy strings (> 20 chars, mixed case + digits + special), known prefixes (sk_, pk_, key_, secret_, token_), password/credential variable names
+  - Flagged values optionally masked by default (click to reveal) — configurable in project settings
+  - Masking state togglable globally via toolbar button ("Show/Hide secrets")
+  - Secret detection rules configurable (enable/disable individual patterns)
+  - Detection runs client-side only (no values sent to external services)
 
 ## Design System Adoption
 
@@ -234,3 +277,12 @@ These items implement the Scooda design system (derived from the Dalil app style
   - Focus ring on all interactive elements
   - Light mode visually complete and polished (not just a dark mode inversion)
   - Visual side-by-side comparison with Dalil passes review
+
+## Archived
+
+### [Distribution] Add portable project profile export for team env configuration sharing
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-21
+- **Archived:** 2026-03-20
+- **Reason:** Team sharing feature premature for a tool that is still single-user in practice. Drift needs to mature its core drift analysis and resolution workflow before adding distribution features. The .env.example generation item covers the most common team sharing need (documenting expected variables). Revisit when Drift has active multi-user adoption.
