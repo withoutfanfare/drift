@@ -43,13 +43,12 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Temp files cleaned up after successful write or on error
   - Backup creation still functions correctly with unique temp paths
 
-## Pending
-
 ### [Quality] Fix diff algorithm producing incorrect write previews
 - **Priority:** P1 (critical)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** The semantic line comparison uses an O(n^2) algorithm that produces incorrect diff previews before writes. Users see a preview that does not match what will actually be written to disk, which fundamentally undermines trust in the tool's core operation. The diff must be correct and performant.
 - **Acceptance criteria:**
   - Diff preview exactly matches the result that would be written to disk
@@ -57,6 +56,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Preview rendering tested against known input/output pairs (at least 10 cases)
   - Performance acceptable for .env files up to 500 lines
   - Concurrent write collision bug (temp file contention) also addressed
+
+## Pending
 
 ### [UX/UI] Add env file change notifications and auto-reload
 - **Priority:** P2 (important)
@@ -123,6 +124,62 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Keys grouped by service prefix (matching the existing grouping feature's logic)
   - Output written to the project root as .env.example (with confirmation if file already exists)
   - Generated template includes comments indicating which environments define each key
+
+### [Distribution] Add portable project profile export for team env configuration sharing
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-21
+- **Status:** pending
+- **Description:** Teams standardising on Drift need a way to share project configurations without manually recreating them on each developer's machine. Exporting a project profile (env set definitions, role assignments, grouping preferences) as a portable JSON file that teammates can import would enable consistent team-wide env management. This is especially valuable when onboarding new developers who need to match the team's established Drift configuration.
+- **Acceptance criteria:**
+  - "Export project" action available from the project context menu
+  - Export produces a JSON file containing: project name, env set definitions (paths and roles), and custom settings
+  - Sensitive values (env file contents) excluded from export by default, with opt-in toggle
+  - Import action validates the exported JSON and shows a preview before applying
+  - Import detects path mismatches (exported paths that don't exist on the target machine) and prompts for remapping
+  - Export/import version stamped for forward compatibility
+
+### [Feature] Add env variable inline documentation from parsed .env comments
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-20
+- **Status:** pending
+- **Description:** Laravel .env files commonly include inline comments (lines starting with `#` or trailing `# comment` after values) that document the purpose, expected format, or valid options for each variable. Drift's parser currently strips these comments, losing valuable context that would help developers understand unfamiliar variables in the comparison matrix. Preserving comments and displaying them as tooltips or inline documentation on variable rows would turn the comparison matrix from a raw key-value grid into a self-documenting configuration reference.
+- **Acceptance criteria:**
+  - Env parser preserves line comments (`# comment above key`) and inline comments (`KEY=value # explanation`)
+  - Comments displayed as tooltips on variable name hover in the comparison matrix
+  - Comments from different env files shown with source file label when they differ
+  - Comment preservation does not affect diff or patch operations (comments are display-only metadata)
+  - Variables with documentation comments visually distinguished (subtle icon indicator)
+  - Existing parser performance not degraded by comment extraction
+
+### [UX/UI] Add quick-copy value action between environment columns in the comparison matrix
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-20
+- **Status:** pending
+- **Description:** When reviewing drift between environments, the most common corrective action is copying a value from one environment to another — propagating a production URL to staging, or syncing a configuration flag across local and testing. Currently users must note the value, navigate to the target env file, find the key, and edit it. A single-click copy action on each cell in the comparison matrix (click to copy value to clipboard, or drag to copy value to an adjacent column's cell) would make the most frequent drift resolution a one-step operation instead of a multi-step context switch.
+- **Acceptance criteria:**
+  - Each value cell in the comparison matrix shows a copy icon on hover
+  - Click copies the value to the system clipboard with a brief success toast
+  - Right-click context menu offers "Copy to [environment name]" for each other loaded environment
+  - "Copy to" action updates the target env file via the existing upsert command (with backup)
+  - Copy action respects the diff preview workflow (shows preview before writing)
+  - Keyboard shortcut (Cmd+C) copies the focused cell's value
+
+### [Quality] Add .env file syntax validation with line-level error reporting on import
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-21
+- **Status:** pending
+- **Description:** Drift's env parser silently accepts malformed .env files — unquoted values containing spaces, invalid variable names (starting with numbers, containing special characters), duplicate keys, and encoding issues produce unexpected comparison results without any warning. Validating .env syntax on load and highlighting problematic lines in the UI would catch configuration errors at the point of import rather than letting them silently corrupt the comparison matrix.
+- **Acceptance criteria:**
+  - .env files validated on load for: valid variable names, correct quoting, duplicate key detection, encoding consistency
+  - Validation warnings displayed per-file with line numbers and descriptions
+  - Warnings shown in a dismissible panel (not blocking — files still load with best-effort parsing)
+  - Duplicate keys highlighted with "last value wins" annotation
+  - Lines with syntax issues visually marked in the comparison matrix (if the file is loaded)
+  - Validation suppressible per file for intentionally non-standard formats
 
 ## Design System Adoption
 
