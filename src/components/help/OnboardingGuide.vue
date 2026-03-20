@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { EnvSet, KeyAnalysisRow } from "../../types";
-import GlassCard from "../ui/GlassCard.vue";
+import { SCard } from "@stuntrocket/ui";
 
 const props = defineProps<{
   sets: EnvSet[];
@@ -108,7 +108,7 @@ const safetyPoints = [
 
 <template>
   <!-- Getting started -->
-  <GlassCard>
+  <SCard variant="glass" class="p-5">
     <div class="flex items-center gap-3 mb-4">
       <div class="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-accent/15">
         <svg class="h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -169,10 +169,10 @@ const safetyPoints = [
         </div>
       </li>
     </ol>
-  </GlassCard>
+  </SCard>
 
   <!-- Features -->
-  <GlassCard>
+  <SCard variant="glass" class="p-5">
     <div class="flex items-center gap-3 mb-5">
       <div class="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-accent/15">
         <svg class="h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -241,10 +241,10 @@ const safetyPoints = [
         <p class="text-xs text-text-muted mt-1 leading-relaxed">{{ feature.description }}</p>
       </div>
     </div>
-  </GlassCard>
+  </SCard>
 
   <!-- Trust and safety -->
-  <GlassCard>
+  <SCard variant="glass" class="p-5">
     <div class="flex items-center gap-3 mb-4">
       <div class="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-success/15">
         <svg class="h-4 w-4 text-success" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -269,5 +269,5 @@ const safetyPoints = [
         <p class="text-xs text-text-secondary leading-relaxed">{{ point }}</p>
       </li>
     </ul>
-  </GlassCard>
+  </SCard>
 </template>

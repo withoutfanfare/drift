@@ -3,7 +3,7 @@ import { ref, computed, watch } from "vue";
 import type { EnvSet, KeyAnalysisRow } from "../../types";
 import { useMasking } from "../../composables/useMasking";
 import StatusBadge from "./StatusBadge.vue";
-import BaseButton from "../ui/BaseButton.vue";
+import { SButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
   row: KeyAnalysisRow;
@@ -251,27 +251,27 @@ function cellIsMasked(setId: string): boolean {
               <!-- Actions: min-width prevents layout jump when switching between buttons/status -->
               <div class="flex items-center gap-1.5 shrink-0 min-w-[100px] justify-end">
                 <template v-if="valueMatches(set.id)">
-                  <BaseButton
+                  <SButton
                     v-if="canRevert(set.id)"
                     variant="ghost"
                     size="sm"
                     @click.stop="emit('revertMemory', [set.id, row.key])"
-                  >Revert</BaseButton>
+                  >Revert</SButton>
                 </template>
                 <template v-else>
-                  <BaseButton
+                  <SButton
                     variant="primary"
                     size="sm"
                     @click.stop="emit('applyMemory', [set.id, row.key, editValue])"
                     title="Update in this session only — no files touched"
-                  >Apply</BaseButton>
-                  <BaseButton
+                  >Apply</SButton>
+                  <SButton
                     v-if="set.filePath"
                     variant="danger"
                     size="sm"
                     @click.stop="emit('applyFile', [set.id, row.key, editValue])"
                     :title="`Save to ${set.name} on disk — backup created automatically`"
-                  >Write to {{ set.name }}</BaseButton>
+                  >Write to {{ set.name }}</SButton>
                 </template>
               </div>
             </div>

@@ -3,8 +3,7 @@ import { ref, watch } from "vue";
 import type { BackupEntry } from "../../types";
 import { useProjects } from "../../composables/useProjects";
 import { listProjectBackups } from "../../composables/useTauriCommands";
-import GlassCard from "../ui/GlassCard.vue";
-import BaseButton from "../ui/BaseButton.vue";
+import { SCard, SButton } from "@stuntrocket/ui";
 
 const { activeProject } = useProjects();
 const backups = ref<BackupEntry[]>([]);
@@ -74,7 +73,7 @@ function humanReason(reason: string): string {
 </script>
 
 <template>
-  <GlassCard padding="p-0">
+  <SCard variant="glass">
     <button
       class="focus-ring w-full flex items-center gap-2.5 px-5 py-3.5 text-left rounded-[var(--radius-xl)]"
       :aria-expanded="expanded"
@@ -130,10 +129,10 @@ function humanReason(reason: string): string {
       </ul>
 
       <div class="mt-3 flex gap-2">
-        <BaseButton variant="tertiary" size="sm" @click="loadBackups">
+        <SButton variant="secondary" size="sm" @click="loadBackups">
           Refresh
-        </BaseButton>
+        </SButton>
       </div>
     </div>
-  </GlassCard>
+  </SCard>
 </template>

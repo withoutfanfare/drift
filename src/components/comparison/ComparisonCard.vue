@@ -9,11 +9,8 @@ import { upsertEnvKeyInRaw } from "../../composables/useEnvMutations";
 import { buildMissingTemplate, buildMergedTemplate, getMissingEntries } from "../../composables/useTemplates";
 import { appendMissingEnvKeys, upsertEnvKey, writeEnvFile } from "../../composables/useTauriCommands";
 import { asFilter } from "../../composables/useRoles";
+import { SCard, SButton, SSelect, SInput } from "@stuntrocket/ui";
 import DiffPreview from "./DiffPreview.vue";
-import GlassCard from "../ui/GlassCard.vue";
-import BaseButton from "../ui/BaseButton.vue";
-import BaseSelect from "../ui/BaseSelect.vue";
-import BaseInput from "../ui/BaseInput.vue";
 import ComparisonTable from "./ComparisonTable.vue";
 import WarningsList from "./WarningsList.vue";
 import StatusMessage from "./StatusMessage.vue";
@@ -331,37 +328,37 @@ async function onSaveFile(setId: string) {
 </script>
 
 <template>
-  <GlassCard padding="p-4">
+  <SCard variant="glass" class="p-4">
     <!-- Compact toolbar: selects + actions -->
     <div class="flex flex-wrap items-end gap-2 mb-3">
       <div class="w-[120px] max-[900px]:w-full max-[900px]:flex-1">
-        <BaseSelect v-model="filter" aria-label="Filter rows">
+        <SSelect v-model="filter" aria-label="Filter rows">
           <option value="all">All</option>
           <option value="missing">Missing</option>
           <option value="drift">Drift</option>
           <option value="unsafe">Unsafe</option>
           <option value="aligned">Aligned</option>
-        </BaseSelect>
+        </SSelect>
       </div>
       <div class="w-[140px] max-[900px]:w-full max-[900px]:flex-1">
-        <BaseInput v-model="search" aria-label="Search keys" placeholder="Search keys..." />
+        <SInput v-model="search" placeholder="Search keys..." />
       </div>
       <div class="flex-1 min-w-[140px]">
-        <BaseSelect v-model="referenceSetId" aria-label="Compare from">
+        <SSelect v-model="referenceSetId" aria-label="Compare from">
           <option v-for="s in sets" :key="s.id" :value="s.id">From: {{ s.name }} ({{ s.role }})</option>
-        </BaseSelect>
+        </SSelect>
       </div>
       <div class="flex-1 min-w-[140px]">
-        <BaseSelect v-model="targetSetId" aria-label="Compare to">
+        <SSelect v-model="targetSetId" aria-label="Compare to">
           <option v-for="s in sets" :key="s.id" :value="s.id">To: {{ s.name }} ({{ s.role }})</option>
-        </BaseSelect>
+        </SSelect>
       </div>
       <div class="flex gap-1.5 max-[900px]:w-full max-[900px]:mt-1">
-        <BaseButton variant="primary" size="sm" @click="onCopyMissing">Copy missing</BaseButton>
-        <BaseButton variant="tertiary" size="sm" @click="onCopyMerged">Export .env</BaseButton>
-        <BaseButton v-if="targetSet?.filePath" variant="danger" size="sm" @click="requestPatch">
+        <SButton variant="primary" size="sm" @click="onCopyMissing">Copy missing</SButton>
+        <SButton variant="secondary" size="sm" @click="onCopyMerged">Export .env</SButton>
+        <SButton v-if="targetSet?.filePath" variant="danger" size="sm" @click="requestPatch">
           {{ missingKeyCount ? `Patch ${missingKeyCount} keys` : 'Patch file' }}
-        </BaseButton>
+        </SButton>
       </div>
     </div>
 
@@ -384,14 +381,14 @@ async function onSaveFile(setId: string) {
     >
       <div class="flex flex-wrap items-center gap-2">
         <span class="text-xs text-text-muted">Session changes — not yet written to disk:</span>
-        <BaseButton
+        <SButton
           v-for="s in unsavedSets"
           :key="s.id"
           variant="primary"
           size="sm"
           :disabled="savingSetId !== null"
           @click="onSaveFile(s.id)"
-        >{{ savingSetId === s.id ? 'Saving...' : `Save ${s.name} (${s.editCount} ${s.editCount === 1 ? 'edit' : 'edits'})` }}</BaseButton>
+        >{{ savingSetId === s.id ? 'Saving...' : `Save ${s.name} (${s.editCount} ${s.editCount === 1 ? 'edit' : 'edits'})` }}</SButton>
       </div>
       <p class="text-[11px] text-text-muted mt-1">A backup is created automatically before each save.</p>
     </div>
@@ -399,9 +396,9 @@ async function onSaveFile(setId: string) {
     <div class="mt-3 rounded-[var(--radius-md)] border border-border-subtle bg-surface-1/45 p-3">
       <div class="flex items-center justify-between gap-2">
         <h3 class="text-sm font-semibold text-text-secondary">Warnings and coverage</h3>
-        <BaseButton variant="ghost" size="sm" @click="showWarnings = !showWarnings">
+        <SButton variant="ghost" size="sm" @click="showWarnings = !showWarnings">
           {{ showWarnings ? "Hide" : "Show" }}
-        </BaseButton>
+        </SButton>
       </div>
       <WarningsList v-if="showWarnings" :sets="sets" :analysis="analysis" />
     </div>
@@ -416,5 +413,5 @@ async function onSaveFile(setId: string) {
       @confirm="executePatch"
       @cancel="showPatchPreview = false"
     />
-  </GlassCard>
+  </SCard>
 </template>

@@ -7,9 +7,7 @@ import { useSampleData } from "../../composables/useSampleData";
 import { useStatus } from "../../composables/useStatus";
 import { useActivityLog } from "../../composables/useActivityLog";
 import { scanEnvFiles, writeProjectBackup } from "../../composables/useTauriCommands";
-import GlassCard from "../ui/GlassCard.vue";
-import BaseButton from "../ui/BaseButton.vue";
-import ConfirmDialog from "../ui/ConfirmDialog.vue";
+import { SCard, SButton, SConfirmDialog } from "@stuntrocket/ui";
 import ProjectForm from "./ProjectForm.vue";
 import FileUploadActions from "./FileUploadActions.vue";
 import ManualSetForm from "./ManualSetForm.vue";
@@ -233,7 +231,7 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
 
 <template>
   <!-- New project form (shown directly, no accordion) -->
-  <GlassCard v-if="creating">
+  <SCard v-if="creating" variant="glass" class="p-5">
     <div class="flex items-center gap-2.5 mb-4">
       <svg class="h-4 w-4 shrink-0 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -252,11 +250,11 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
       @scan="onScan"
       @baseline="onBaseline"
     />
-  </GlassCard>
+  </SCard>
 
   <!-- Normal project settings (collapsible accordion) -->
   <template v-else>
-  <GlassCard padding="p-0">
+  <SCard variant="glass">
     <button
       class="focus-ring w-full flex items-center gap-2.5 px-5 py-3.5 text-left rounded-[var(--radius-xl)]"
       :aria-expanded="settingsExpanded"
@@ -292,11 +290,11 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
         @baseline="onBaseline"
       />
     </div>
-  </GlassCard>
+  </SCard>
   </template>
 
   <!-- Environment Sets (hidden during project creation) -->
-  <GlassCard v-if="!creating">
+  <SCard v-if="!creating" variant="glass" class="p-5">
     <div class="flex items-baseline justify-between gap-3 mb-4">
       <h2 class="text-[17px] font-semibold text-text-primary">.env files</h2>
       <div class="flex items-center gap-2">
@@ -354,18 +352,21 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
 
     <!-- Danger zone -->
     <div v-if="sets.length > 0" class="mt-4 border-t border-border-subtle pt-3">
-      <BaseButton variant="danger" size="sm" @click="confirmingClear = true">
+      <SButton variant="danger" size="sm" @click="confirmingClear = true">
         Remove all .env files from Drift
-      </BaseButton>
+      </SButton>
     </div>
 
-    <ConfirmDialog
+    <SConfirmDialog
       v-if="confirmingClear"
+      :open="true"
       title="Remove all .env files from Drift?"
       message="This will remove all .env files loaded for the active project in Drift. A backup will be created first. Your actual .env files are not affected."
       confirm-label="Remove files"
+      danger
       @confirm="confirmingClear = false; onClearSets()"
       @cancel="confirmingClear = false"
+      @close="confirmingClear = false"
     />
-  </GlassCard>
+  </SCard>
 </template>

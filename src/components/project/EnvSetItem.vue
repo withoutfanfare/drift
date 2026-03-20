@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import type { EnvSet } from "../../types";
-import { SBadge } from "@stuntrocket/ui";
-import BaseButton from "../ui/BaseButton.vue";
-import ConfirmDialog from "../ui/ConfirmDialog.vue";
+import { SBadge, SButton, SConfirmDialog } from "@stuntrocket/ui";
 
 const props = defineProps<{
   set: EnvSet;
@@ -45,16 +43,19 @@ const roleBadgeVariant = computed(() => {
         </div>
         <p v-if="set.filePath" class="text-xs text-text-muted font-mono truncate mt-1">{{ set.filePath }}</p>
       </div>
-      <BaseButton variant="ghost" size="sm" @click="confirming = true">Remove</BaseButton>
+      <SButton variant="ghost" size="sm" @click="confirming = true">Remove</SButton>
     </div>
 
-    <ConfirmDialog
+    <SConfirmDialog
       v-if="confirming"
+      :open="true"
       title="Remove .env file?"
       :message="`Remove ${set.name} from Drift? A backup will be created first. The original file is not affected.`"
       confirm-label="Remove file"
+      danger
       @confirm="confirming = false; emit('remove', set.id)"
       @cancel="confirming = false"
+      @close="confirming = false"
     />
   </li>
 </template>

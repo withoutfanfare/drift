@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EnvSet } from "../../types";
 import EnvSetItem from "./EnvSetItem.vue";
-import BaseButton from "../ui/BaseButton.vue";
+import { SButton } from "@stuntrocket/ui";
 
 defineProps<{
   sets: EnvSet[];
@@ -27,8 +27,8 @@ const emit = defineEmits<{
     <p class="text-sm text-text-secondary">No .env files loaded yet.</p>
     <p class="text-xs text-text-muted mt-1">Scan your project folder or load .env files to begin.</p>
     <div class="flex justify-center gap-2 mt-4">
-      <BaseButton variant="tertiary" size="sm" @click="emit('scan')">Scan project</BaseButton>
-      <BaseButton variant="primary" size="sm" @click="emit('loadFiles')">Load .env files</BaseButton>
+      <SButton variant="secondary" size="sm" @click="emit('scan')">Scan project</SButton>
+      <SButton variant="primary" size="sm" @click="emit('loadFiles')">Load .env files</SButton>
     </div>
   </div>
 </template>

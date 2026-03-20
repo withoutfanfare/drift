@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import BaseButton from "../ui/BaseButton.vue";
+import { SButton } from "@stuntrocket/ui";
 
 const emit = defineEmits<{
   loadFiles: [files: File[]];
@@ -21,8 +21,8 @@ function onFileChange(event: Event) {
 
 <template>
   <div class="flex flex-wrap gap-2">
-    <BaseButton variant="primary" size="sm" @click="fileInputRef?.click()">Load .env files</BaseButton>
-    <BaseButton variant="tertiary" size="sm" @click="emit('loadSample')">Load sample trio</BaseButton>
+    <SButton variant="primary" size="sm" @click="fileInputRef?.click()">Load .env files</SButton>
+    <SButton variant="secondary" size="sm" @click="emit('loadSample')">Load sample trio</SButton>
   </div>
 
   <input

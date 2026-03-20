@@ -4,9 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useStatus } from "../../composables/useStatus";
 import { inferProjectName } from "../../composables/useTauriCommands";
 import type { ProjectProfile } from "../../types";
-import BaseInput from "../ui/BaseInput.vue";
-import BaseButton from "../ui/BaseButton.vue";
-import ConfirmDialog from "../ui/ConfirmDialog.vue";
+import { SFormField, SInput, SButton, SConfirmDialog } from "@stuntrocket/ui";
 
 const props = defineProps<{
   activeProject: ProjectProfile | undefined;
@@ -99,47 +97,50 @@ async function browseForProjectPath() {
 
 <template>
   <div class="space-y-3">
-    <BaseInput v-model="projectName" label="Project name" placeholder="Client Platform" />
-    <BaseInput
-      v-model="projectPath"
-      label="Project root path"
-      placeholder="/Users/you/Code/client-platform"
-    />
+    <SFormField label="Project name">
+      <SInput v-model="projectName" placeholder="Client Platform" />
+    </SFormField>
+    <SFormField label="Project root path">
+      <SInput v-model="projectPath" placeholder="/Users/you/Code/client-platform" />
+    </SFormField>
     <div class="flex flex-wrap gap-2">
-      <BaseButton
-        variant="tertiary"
+      <SButton
+        variant="secondary"
         size="sm"
         :loading="selectingFolder"
         @click="browseForProjectPath"
       >
         Browse for folder
-      </BaseButton>
-      <BaseButton variant="primary" size="sm" @click="emit('save', projectName.trim(), projectPath.trim())">
+      </SButton>
+      <SButton variant="primary" size="sm" @click="emit('save', projectName.trim(), projectPath.trim())">
         {{ creating ? 'Add project' : 'Save project' }}
-      </BaseButton>
+      </SButton>
       <template v-if="!creating">
-        <BaseButton variant="tertiary" size="sm" :loading="scanning" @click="emit('scan')">
+        <SButton variant="secondary" size="sm" :loading="scanning" @click="emit('scan')">
           Scan .env files
-        </BaseButton>
-        <BaseButton variant="tertiary" size="sm" @click="emit('baseline')">
+        </SButton>
+        <SButton variant="secondary" size="sm" @click="emit('baseline')">
           Create starter templates
-        </BaseButton>
+        </SButton>
       </template>
     </div>
 
     <div v-if="!creating" class="border-t border-border-subtle pt-3">
-      <BaseButton variant="danger" size="sm" @click="confirmingDelete = true">
+      <SButton variant="danger" size="sm" @click="confirmingDelete = true">
         Remove project from Drift
-      </BaseButton>
+      </SButton>
     </div>
 
-    <ConfirmDialog
+    <SConfirmDialog
       v-if="confirmingDelete"
+      :open="true"
       title="Remove project?"
       :message="`This will remove ${activeProject?.name ?? 'this project'} and all its linked env sets from Drift. A backup will be created first. Your project files are not affected.`"
       confirm-label="Remove project"
+      danger
       @confirm="confirmingDelete = false; emit('delete')"
       @cancel="confirmingDelete = false"
+      @close="confirmingDelete = false"
     />
   </div>
 </template>

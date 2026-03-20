@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { computeDiff } from "../../composables/useDiff";
-import { SModal } from "@stuntrocket/ui";
-import BaseButton from "../ui/BaseButton.vue";
+import { SModal, SButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
   title: string;
@@ -74,8 +73,8 @@ const removedCount = computed(() => diffLines.value.filter((l) => l.type === "re
 
     <template #footer>
       <div class="flex justify-end gap-2 px-5 py-3.5 border-t border-border-subtle">
-        <BaseButton variant="secondary" size="sm" @click="emit('cancel')">Cancel</BaseButton>
-        <BaseButton variant="primary" size="sm" @click="emit('confirm')">{{ confirmLabel ?? 'Apply changes' }}</BaseButton>
+        <SButton variant="secondary" size="sm" @click="emit('cancel')">Cancel</SButton>
+        <SButton variant="primary" size="sm" @click="emit('confirm')">{{ confirmLabel ?? 'Apply changes' }}</SButton>
       </div>
     </template>
   </SModal>

@@ -2,10 +2,7 @@
 import { ref } from "vue";
 import type { EnvRole } from "../../types";
 import { asRole } from "../../composables/useRoles";
-import BaseInput from "../ui/BaseInput.vue";
-import BaseSelect from "../ui/BaseSelect.vue";
-import BaseTextarea from "../ui/BaseTextarea.vue";
-import BaseButton from "../ui/BaseButton.vue";
+import { SFormField, SInput, SSelect, STextarea, SButton } from "@stuntrocket/ui";
 
 const emit = defineEmits<{
   addManual: [name: string, role: EnvRole, rawText: string];
@@ -38,19 +35,24 @@ function submit() {
 
 <template>
   <div class="space-y-3 mt-4">
-    <BaseInput v-model="manualName" label="Manual set name" placeholder=".env.staging" />
-    <BaseSelect v-model="manualRole" label="Manual set role">
-      <option value="local">local</option>
-      <option value="staging">staging</option>
-      <option value="live">live</option>
-      <option value="other">other</option>
-    </BaseSelect>
-    <BaseTextarea
-      v-model="manualContent"
-      label="Manual .env content"
-      placeholder="APP_NAME=Laravel&#10;APP_ENV=staging"
-      :rows="5"
-    />
-    <BaseButton variant="primary" @click="submit">Add Manual Set</BaseButton>
+    <SFormField label="Manual set name">
+      <SInput v-model="manualName" placeholder=".env.staging" />
+    </SFormField>
+    <SFormField label="Manual set role">
+      <SSelect v-model="manualRole">
+        <option value="local">local</option>
+        <option value="staging">staging</option>
+        <option value="live">live</option>
+        <option value="other">other</option>
+      </SSelect>
+    </SFormField>
+    <SFormField label="Manual .env content">
+      <STextarea
+        v-model="manualContent"
+        placeholder="APP_NAME=Laravel&#10;APP_ENV=staging"
+        :rows="5"
+      />
+    </SFormField>
+    <SButton variant="primary" @click="submit">Add Manual Set</SButton>
   </div>
 </template>

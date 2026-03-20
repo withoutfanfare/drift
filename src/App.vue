@@ -14,7 +14,7 @@ import ProjectSelector from "./components/project/ProjectSelector.vue";
 import PageHeader from "./components/layout/PageHeader.vue";
 import ActivityTimeline from "./components/layout/ActivityTimeline.vue";
 import EmptyState from "./components/layout/EmptyState.vue";
-import BaseButton from "./components/ui/BaseButton.vue";
+import { SButton } from "@stuntrocket/ui";
 import BackupBrowser from "./components/project/BackupBrowser.vue";
 
 const { projects, activeProjectId, activeProject, saveActiveProjectId } = useProjects();
@@ -101,9 +101,9 @@ function onProjectChange(id: string) {
           heading="Pick a Laravel project to get started"
           description="Browse to your project folder — Drift will scan for .env files and show you what's missing, what's different, and what's unsafe across environments."
         >
-          <BaseButton variant="primary" @click="openPage('projects')">
+          <SButton variant="primary" @click="openPage('projects')">
             Set up a project
-          </BaseButton>
+          </SButton>
         </EmptyState>
 
         <!-- Empty state: project but no sets -->
@@ -112,9 +112,9 @@ function onProjectChange(id: string) {
           :heading="`No .env files loaded for ${activeProject.name}`"
           description="Drift found your project but hasn't loaded any .env files yet."
         >
-          <BaseButton variant="primary" @click="openPage('projects')">
+          <SButton variant="primary" @click="openPage('projects')">
             Load .env files
-          </BaseButton>
+          </SButton>
         </EmptyState>
 
         <!-- Empty state: only one set -->
@@ -123,9 +123,9 @@ function onProjectChange(id: string) {
           heading="Add another .env file to start comparing"
           description="Drift needs at least two .env files to detect drift. Load your staging or production .env to see what's missing."
         >
-          <BaseButton variant="primary" @click="openPage('projects')">
+          <SButton variant="primary" @click="openPage('projects')">
             Load another file
-          </BaseButton>
+          </SButton>
         </EmptyState>
 
         <!-- Normal dashboard -->
