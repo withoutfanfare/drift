@@ -8,6 +8,7 @@ import type {
   ProjectBackupSet,
   ProjectBackupResult,
   BackupEntry,
+  BackupRotationResult,
 } from "../types";
 
 export function scanEnvFiles(projectRoot: string): Promise<ScannedEnvFile[]> {
@@ -78,4 +79,25 @@ export function writeProjectBackup(
 
 export function listProjectBackups(projectRoot: string): Promise<BackupEntry[]> {
   return invoke<BackupEntry[]>("list_project_backups", { projectRoot });
+}
+
+export function rotateBackups(
+  envFilePath: string,
+  keep: number,
+): Promise<BackupRotationResult> {
+  return invoke<BackupRotationResult>("rotate_backups", {
+    envFilePath,
+    keep,
+  });
+}
+
+export function getFileMtime(filePath: string): Promise<number> {
+  return invoke<number>("get_file_mtime", { filePath });
+}
+
+export function writeEnvExample(
+  projectRoot: string,
+  content: string,
+): Promise<string> {
+  return invoke<string>("write_env_example", { projectRoot, content });
 }

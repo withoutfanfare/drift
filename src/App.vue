@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import type { AppPage } from "./types";
+import { computed, ref, watch } from "vue";
+import type { AppPage, FileChangeEvent } from "./types";
 import { useProjects } from "./composables/useProjects";
 import { useEnvSets } from "./composables/useEnvSets";
 import { analyzeRows } from "./composables/useAnalysis";
+import { useFileWatcher } from "./composables/useFileWatcher";
+import { useStatus } from "./composables/useStatus";
+import { useActivityLog } from "./composables/useActivityLog";
+import { scanEnvFiles } from "./composables/useTauriCommands";
 import AppShell from "./components/layout/AppShell.vue";
 import SidebarPanel from "./components/layout/SidebarPanel.vue";
 import KpiBar from "./components/kpi/KpiBar.vue";
@@ -14,14 +18,74 @@ import ProjectSelector from "./components/project/ProjectSelector.vue";
 import PageHeader from "./components/layout/PageHeader.vue";
 import ActivityTimeline from "./components/layout/ActivityTimeline.vue";
 import EmptyState from "./components/layout/EmptyState.vue";
+import FileChangeToast from "./components/layout/FileChangeToast.vue";
 import { SButton } from "@stuntrocket/ui";
 import BackupBrowser from "./components/project/BackupBrowser.vue";
 
 const { projects, activeProjectId, activeProject, saveActiveProjectId } = useProjects();
-const { currentSets } = useEnvSets();
+const { currentSets, addOrReplaceSet } = useEnvSets();
+const { setStatus } = useStatus();
+const { log } = useActivityLog();
 
 const analysis = computed(() => analyzeRows(currentSets.value));
 const PAGE_STORAGE_KEY = "edm.page.v1";
+
+const fileChangeEvents = ref<FileChangeEvent[]>([]);
+
+// File watcher for auto-reload
+const { startWatching, stopWatching, pendingChanges, dismissChanges } = useFileWatcher({
+  onFileChanged(events: FileChangeEvent[]) {
+    fileChangeEvents.value = events;
+  },
+});
+
+// Start watching when sets change
+watch(
+  currentSets,
+  (sets) => {
+    if (sets.length > 0) {
+      startWatching(sets);
+    } else {
+      stopWatching();
+    }
+  },
+  { immediate: true },
+);
+
+async function reloadChangedFiles() {
+  const events = fileChangeEvents.value;
+  fileChangeEvents.value = [];
+  dismissChanges();
+
+  if (!activeProject.value) return;
+
+  try {
+    const scanned = await scanEnvFiles(activeProject.value.rootPath);
+    for (const file of scanned) {
+      const changedEvent = events.find((e) => e.path === file.path);
+      if (changedEvent) {
+        addOrReplaceSet({
+          projectId: activeProject.value!.id,
+          name: file.name,
+          source: "scan",
+          rawText: file.content,
+          filePath: file.path,
+        });
+      }
+    }
+    const reloadedCount = events.filter((e) => e.kind === "modified").length;
+    setStatus(`Reloaded ${reloadedCount} changed .env file${reloadedCount !== 1 ? "s" : ""}.`);
+    log("info", `Reloaded ${reloadedCount} changed .env files`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    setStatus(`Reload failed: ${message}`);
+  }
+}
+
+function dismissFileChanges() {
+  fileChangeEvents.value = [];
+  dismissChanges();
+}
 
 function loadPage(): AppPage {
   const stored = localStorage.getItem(PAGE_STORAGE_KEY);
@@ -92,6 +156,14 @@ function onProjectChange(id: string) {
         {{ navPage === 'help' ? 'Help' : navPage === 'projects' ? 'Projects' : 'Dashboard' }}
       </button>
     </div>
+
+    <!-- File change toast notification -->
+    <FileChangeToast
+      v-if="fileChangeEvents.length > 0"
+      :events="fileChangeEvents"
+      @reload="reloadChangedFiles"
+      @dismiss="dismissFileChanges"
+    />
 
     <div class="space-y-4">
       <template v-if="page === 'dashboard'">

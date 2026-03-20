@@ -791,6 +791,109 @@ fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
     Ok(())
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BackupRotationResult {
+    deleted_count: usize,
+    deleted_paths: Vec<String>,
+}
+
+/// Rotate backup files for a given env file, keeping only the most recent `keep` backups.
+#[tauri::command]
+fn rotate_backups(
+    env_file_path: String,
+    keep: usize,
+) -> Result<BackupRotationResult, String> {
+    let path = PathBuf::from(env_file_path.trim());
+    let parent = path
+        .parent()
+        .ok_or_else(|| "Cannot determine parent directory".to_string())?;
+
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| "Cannot determine file name".to_string())?;
+
+    // Pattern: {file_name}.bak.{timestamp}
+    let prefix = format!("{}.bak.", file_name);
+
+    let Ok(dir_entries) = fs::read_dir(parent) else {
+        return Ok(BackupRotationResult {
+            deleted_count: 0,
+            deleted_paths: vec![],
+        });
+    };
+
+    let mut backups: Vec<(PathBuf, u64)> = Vec::new();
+
+    for entry in dir_entries.flatten() {
+        let entry_path = entry.path();
+        if !entry_path.is_file() {
+            continue;
+        }
+        let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if !name.starts_with(&prefix) {
+            continue;
+        }
+        let timestamp = name
+            .strip_prefix(&prefix)
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(0);
+        backups.push((entry_path, timestamp));
+    }
+
+    // Sort newest first
+    backups.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let mut deleted_paths: Vec<String> = Vec::new();
+
+    if backups.len() > keep {
+        for (old_path, _) in &backups[keep..] {
+            if fs::remove_file(old_path).is_ok() {
+                deleted_paths.push(old_path.to_string_lossy().to_string());
+            }
+        }
+    }
+
+    Ok(BackupRotationResult {
+        deleted_count: deleted_paths.len(),
+        deleted_paths,
+    })
+}
+
+/// Get the last modification time of a file as seconds since UNIX epoch.
+#[tauri::command]
+fn get_file_mtime(file_path: String) -> Result<u64, String> {
+    let path = PathBuf::from(file_path.trim());
+    let metadata = fs::metadata(&path)
+        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    let modified = metadata
+        .modified()
+        .map_err(|e| format!("Failed to get modification time: {}", e))?;
+    let duration = modified
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| format!("System time error: {}", e))?;
+    Ok(duration.as_secs())
+}
+
+/// Write a .env.example file to the project root.
+#[tauri::command]
+fn write_env_example(
+    project_root: String,
+    content: String,
+) -> Result<String, String> {
+    let root = PathBuf::from(project_root.trim());
+    if !root.exists() || !root.is_dir() {
+        return Err("Project root does not exist or is not a directory".to_string());
+    }
+
+    let target = root.join(".env.example");
+    atomic_write(&target, &content)?;
+    Ok(target.to_string_lossy().to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -934,7 +1037,10 @@ pub fn run() {
             upsert_env_key,
             write_env_file,
             write_project_backup,
-            list_project_backups
+            list_project_backups,
+            rotate_backups,
+            get_file_mtime,
+            write_env_example
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

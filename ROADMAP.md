@@ -57,13 +57,12 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Performance acceptable for .env files up to 500 lines
   - Concurrent write collision bug (temp file contention) also addressed
 
-## Pending
-
 ### [UX/UI] Add env file change notifications and auto-reload
 - **Priority:** P2 (important)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** When a developer edits an `.env` file outside of Drift (e.g. in their editor or via deployment scripts), the app's in-memory state becomes stale without any indication. File system watching with automatic or prompted reload would keep the comparison matrix accurate and prevent users from acting on outdated data.
 - **Acceptance criteria:**
   - File system watcher monitors all registered `.env` files for changes
@@ -76,7 +75,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Laravel .env files typically contain clusters of related variables sharing a prefix (DB_*, MAIL_*, AWS_*, REDIS_*, QUEUE_*). The comparison matrix currently shows all variables in a flat list, making it hard to visually scan related configuration. Auto-grouping by common prefixes with collapsible sections would help developers quickly locate and compare specific service configuration across environments.
 - **Acceptance criteria:**
   - Variables auto-grouped by common prefixes (DB_, MAIL_, AWS_, REDIS_, CACHE_, QUEUE_, etc.)
@@ -89,7 +89,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** The comparison matrix recalculates on every env mutation, filter change, and set addition. When users perform rapid sequential edits (patching multiple keys, toggling filters), this triggers redundant recalculations that can cause UI lag with large env files. Debouncing matrix recalculation and batching mutation triggers would keep the UI responsive during bulk editing sessions.
 - **Acceptance criteria:**
   - Matrix recalculation debounced with a 150ms delay after the last trigger
@@ -102,7 +103,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P3 (nice-to-have)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Drift currently shows which keys are missing across environments but does not analyse the values themselves. Common drift patterns — a staging environment still pointing at a production database, a debug flag left enabled in production, or an API URL using HTTP instead of HTTPS — are invisible until they cause an incident. Analysing value patterns across environments and flagging suspicious drift would add an intelligence layer beyond simple key-presence comparison.
 - **Acceptance criteria:**
   - Value analysis rules detect: production URLs in non-production envs, debug/testing flags in production-like envs, HTTP where HTTPS is expected, localhost references in non-local envs
@@ -115,7 +117,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Laravel projects conventionally include a .env.example file documenting all expected environment variables with placeholder values. Drift already parses and analyses env files across environments — generating a .env.example template from the union of all keys (with values replaced by descriptive placeholders or empty strings) would automate a tedious manual task and ensure the example file stays in sync with actual usage.
 - **Acceptance criteria:**
   - "Generate .env.example" action available from the project toolbar or context menu
@@ -129,7 +132,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Laravel .env files commonly include inline comments (lines starting with `#` or trailing `# comment` after values) that document the purpose, expected format, or valid options for each variable. Drift's parser currently strips these comments, losing valuable context that would help developers understand unfamiliar variables in the comparison matrix. Preserving comments and displaying them as tooltips or inline documentation on variable rows would turn the comparison matrix from a raw key-value grid into a self-documenting configuration reference.
 - **Acceptance criteria:**
   - Env parser preserves line comments (`# comment above key`) and inline comments (`KEY=value # explanation`)
@@ -143,7 +147,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** When reviewing drift between environments, the most common corrective action is copying a value from one environment to another — propagating a production URL to staging, or syncing a configuration flag across local and testing. Currently users must note the value, navigate to the target env file, find the key, and edit it. A single-click copy action on each cell in the comparison matrix (click to copy value to clipboard, or drag to copy value to an adjacent column's cell) would make the most frequent drift resolution a one-step operation instead of a multi-step context switch.
 - **Acceptance criteria:**
   - Each value cell in the comparison matrix shows a copy icon on hover
@@ -157,7 +162,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-21
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Drift's env parser silently accepts malformed .env files — unquoted values containing spaces, invalid variable names (starting with numbers, containing special characters), duplicate keys, and encoding issues produce unexpected comparison results without any warning. Validating .env syntax on load and highlighting problematic lines in the UI would catch configuration errors at the point of import rather than letting them silently corrupt the comparison matrix.
 - **Acceptance criteria:**
   - .env files validated on load for: valid variable names, correct quoting, duplicate key detection, encoding consistency
@@ -171,7 +177,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** When Drift patches env files (appending missing keys or upserting values), there is no record of what the previous value was. During active environment management — syncing staging with production, rolling back a configuration change, investigating when a value diverged — developers need to know what changed and when. Tracking a per-key change history (previous value, new value, timestamp, which environment) in localStorage would turn the comparison matrix from a point-in-time view into a temporal audit trail, enabling value-level undo without needing full file backup restoration.
 - **Acceptance criteria:**
   - Each upsert operation records: key name, previous value, new value, timestamp, target env file path
@@ -185,7 +192,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Every other app in the Tauri portfolio either has keyboard shortcuts implemented or planned, but Drift has none. Developers reviewing env drift across multiple projects need rapid matrix navigation — jumping between environments, expanding grouped variables, triggering patches. Currently all interaction requires mouse clicks, which breaks the flow during rapid triage sessions. Standard navigation shortcuts (arrow keys for cell navigation, Enter to edit, Cmd+S to save, Cmd+F to focus filter) would bring Drift's interaction speed in line with the portfolio standard.
 - **Acceptance criteria:**
   - Arrow keys navigate between cells in the comparison matrix
@@ -200,7 +208,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** The Rust backend creates timestamped `.bak` files before every env file mutation (append and upsert operations), but there is no cleanup mechanism. Over weeks of active use — especially with frequent patching across multiple environments — backup files accumulate indefinitely in project directories, cluttering the file tree and consuming disk space. A configurable retention policy (keep last N backups per env file, default 5) with automatic cleanup after each new backup would prevent unbounded growth whilst maintaining a safety net for recent changes.
 - **Acceptance criteria:**
   - After creating a new backup, older backups beyond the retention limit are deleted
@@ -214,7 +223,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** The comparison matrix displays env variable values across environments without any sensitivity awareness. Values that look like API keys, database passwords, JWT secrets, or OAuth tokens are shown identically to innocuous configuration values like APP_NAME or LOG_LEVEL. When generating .env.example templates (existing roadmap item) or sharing screen during pair programming, sensitive values are exposed without warning. Detecting common secret patterns (high-entropy strings, known key prefixes like sk_, pk_, token_, password-like values) and flagging them with a visual indicator would help developers maintain security awareness during drift review sessions and prevent accidental exposure.
 - **Acceptance criteria:**
   - Values matching common secret patterns flagged with a warning badge in the comparison matrix
@@ -223,6 +233,10 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Masking state togglable globally via toolbar button ("Show/Hide secrets")
   - Secret detection rules configurable (enable/disable individual patterns)
   - Detection runs client-side only (no values sent to external services)
+
+## Pending
+
+_No pending functional items._
 
 ## Design System Adoption
 
