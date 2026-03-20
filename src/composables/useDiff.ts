@@ -5,8 +5,8 @@ export interface DiffLine {
 }
 
 export function computeDiff(original: string, updated: string): DiffLine[] {
-  const oldLines = original.split("\n");
-  const newLines = updated.split("\n");
+  const oldLines = original.split(/\r?\n/);
+  const newLines = updated.split(/\r?\n/);
 
   // Myers diff - compute shortest edit script
   const edits = myersDiff(oldLines, newLines);

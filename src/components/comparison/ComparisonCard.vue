@@ -12,7 +12,7 @@ import { useEnvExample } from "../../composables/useEnvExample";
 import { useKeyboardShortcuts } from "../../composables/useKeyboardShortcuts";
 import { useDebouncedComputed } from "../../composables/useDebounce";
 import { upsertEnvKeyInRaw } from "../../composables/useEnvMutations";
-import { buildMissingTemplate, buildMergedTemplate, getMissingEntries } from "../../composables/useTemplates";
+import { buildMissingTemplate, buildMergedTemplate, buildPatchPreview, getMissingEntries } from "../../composables/useTemplates";
 import { appendMissingEnvKeys, upsertEnvKey, writeEnvFile, writeEnvExample, rotateBackups } from "../../composables/useTauriCommands";
 import { asFilter } from "../../composables/useRoles";
 import { SCard, SButton, SSelect, SInput } from "@stuntrocket/ui";
@@ -251,15 +251,14 @@ function requestPatch() {
     setStatus("No missing keys to append.");
     return;
   }
-  pendingPatchEntries.value = entries;
-
-  patchPreviewOriginal.value = targetSet.value.rawText;
-  let preview = targetSet.value.rawText;
-  if (!preview.endsWith("\n")) preview += "\n";
-  preview += "\n# Added by Drift\n";
-  for (const entry of entries) {
-    preview += `${entry.key}=${entry.value}\n`;
+  // Build preview that mirrors the Rust backend's deduplication logic
+  const { preview, actualEntries } = buildPatchPreview(targetSet.value.rawText, entries);
+  if (actualEntries.length === 0) {
+    setStatus("No missing keys to append (all entries already exist in the target file).");
+    return;
   }
+  pendingPatchEntries.value = actualEntries;
+  patchPreviewOriginal.value = targetSet.value.rawText;
   patchPreviewUpdated.value = preview;
   showPatchPreview.value = true;
 }
@@ -578,7 +577,7 @@ async function onSaveFile(setId: string) {
       :file-path="targetSet?.filePath ?? ''"
       :original="patchPreviewOriginal"
       :updated="patchPreviewUpdated"
-      :summary="`Will append ${missingKeyCount} missing keys. A backup will be created first.`"
+      :summary="`Will append ${pendingPatchEntries.length} missing keys. A backup will be created first.`"
       confirm-label="Apply changes"
       @confirm="executePatch"
       @cancel="showPatchPreview = false"

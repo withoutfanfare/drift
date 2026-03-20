@@ -996,6 +996,153 @@ mod tests {
     }
 
     #[test]
+    fn parse_env_keys_extracts_valid_keys() {
+        let content = "APP_NAME=Test\nDB_HOST=localhost\n# comment\n\nCACHE_DRIVER=redis\n";
+        let keys = parse_env_keys(content);
+        assert!(keys.contains("APP_NAME"));
+        assert!(keys.contains("DB_HOST"));
+        assert!(keys.contains("CACHE_DRIVER"));
+        assert_eq!(keys.len(), 3);
+    }
+
+    #[test]
+    fn parse_env_keys_handles_export_prefix() {
+        let content = "export DB_HOST=localhost\nexport APP_KEY=base64:abc\n";
+        let keys = parse_env_keys(content);
+        assert!(keys.contains("DB_HOST"));
+        assert!(keys.contains("APP_KEY"));
+        assert_eq!(keys.len(), 2);
+    }
+
+    #[test]
+    fn parse_env_keys_skips_comments_and_blanks() {
+        let content = "# DB_HOST=old\n\n  \n APP_NAME=Test\n";
+        let keys = parse_env_keys(content);
+        assert!(!keys.contains("DB_HOST")); // commented out
+        assert!(keys.contains("APP_NAME"));
+        assert_eq!(keys.len(), 1);
+    }
+
+    #[test]
+    fn parse_env_keys_handles_windows_line_endings() {
+        let content = "APP_NAME=Test\r\nDB_HOST=localhost\r\n";
+        let keys = parse_env_keys(content);
+        assert!(keys.contains("APP_NAME"));
+        assert!(keys.contains("DB_HOST"));
+        assert_eq!(keys.len(), 2);
+    }
+
+    #[test]
+    fn append_skips_existing_keys() {
+        let (dir, env_path) = create_temp_project();
+        fs::write(&env_path, "APP_NAME=Test\nDB_HOST=localhost\n").unwrap();
+
+        let entries = vec![
+            MissingEntry { key: "DB_HOST".into(), value: "prod".into() },
+            MissingEntry { key: "CACHE_DRIVER".into(), value: "redis".into() },
+        ];
+
+        let result = append_missing_env_keys(
+            env_path.to_str().unwrap().to_string(),
+            dir.path().to_str().unwrap().to_string(),
+            entries,
+            false,
+        ).unwrap();
+
+        assert_eq!(result.appended_count, 1);
+        assert_eq!(result.skipped_existing, 1);
+        assert!(result.updated_content.contains("CACHE_DRIVER=redis"));
+        // DB_HOST should appear only once (the original)
+        let db_host_count = result.updated_content.matches("DB_HOST").count();
+        assert_eq!(db_host_count, 1);
+    }
+
+    #[test]
+    fn append_deduplicates_within_entries() {
+        let (dir, env_path) = create_temp_project();
+        fs::write(&env_path, "APP_NAME=Test\n").unwrap();
+
+        let entries = vec![
+            MissingEntry { key: "NEW_KEY".into(), value: "first".into() },
+            MissingEntry { key: "NEW_KEY".into(), value: "second".into() },
+        ];
+
+        let result = append_missing_env_keys(
+            env_path.to_str().unwrap().to_string(),
+            dir.path().to_str().unwrap().to_string(),
+            entries,
+            false,
+        ).unwrap();
+
+        assert_eq!(result.appended_count, 1);
+        assert_eq!(result.skipped_existing, 1);
+        // Only the first occurrence should be appended
+        assert!(result.updated_content.contains("NEW_KEY=first"));
+        assert!(!result.updated_content.contains("NEW_KEY=second"));
+    }
+
+    #[test]
+    fn append_returns_unchanged_when_all_exist() {
+        let (dir, env_path) = create_temp_project();
+        let original = "APP_NAME=Test\nDB_HOST=localhost\n";
+        fs::write(&env_path, original).unwrap();
+
+        let entries = vec![
+            MissingEntry { key: "APP_NAME".into(), value: "Other".into() },
+            MissingEntry { key: "DB_HOST".into(), value: "prod".into() },
+        ];
+
+        let result = append_missing_env_keys(
+            env_path.to_str().unwrap().to_string(),
+            dir.path().to_str().unwrap().to_string(),
+            entries,
+            false,
+        ).unwrap();
+
+        assert_eq!(result.appended_count, 0);
+        assert_eq!(result.skipped_existing, 2);
+        assert_eq!(result.updated_content, original);
+    }
+
+    #[test]
+    fn append_quotes_values_with_spaces() {
+        let (dir, env_path) = create_temp_project();
+        fs::write(&env_path, "APP_NAME=Test\n").unwrap();
+
+        let entries = vec![
+            MissingEntry { key: "APP_URL".into(), value: "my app name".into() },
+        ];
+
+        let result = append_missing_env_keys(
+            env_path.to_str().unwrap().to_string(),
+            dir.path().to_str().unwrap().to_string(),
+            entries,
+            false,
+        ).unwrap();
+
+        assert!(result.updated_content.contains("APP_URL=\"my app name\""));
+    }
+
+    #[test]
+    fn append_quotes_values_with_hash() {
+        let (dir, env_path) = create_temp_project();
+        fs::write(&env_path, "APP_NAME=Test\n").unwrap();
+
+        let entries = vec![
+            MissingEntry { key: "SECRET".into(), value: "abc#def".into() },
+        ];
+
+        let result = append_missing_env_keys(
+            env_path.to_str().unwrap().to_string(),
+            dir.path().to_str().unwrap().to_string(),
+            entries,
+            false,
+        ).unwrap();
+
+        assert!(result.updated_content.contains("SECRET=\"abc#def\""));
+    }
+
+    #[test]
     fn atomic_write_produces_unique_temp_paths() {
         let dir = tempfile::tempdir().unwrap();
         let target = dir.path().join(".env");

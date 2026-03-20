@@ -1,5 +1,5 @@
 import type { EnvSet, MissingEntry } from "../types";
-import { formatValue, normalizeForComparison } from "./useEnvParser";
+import { formatValue, normalizeForComparison, parseKeyFromEnvLine } from "./useEnvParser";
 
 export function getMissingEntries(reference: EnvSet, target: EnvSet): MissingEntry[] {
   const entries: MissingEntry[] = [];
@@ -25,6 +25,44 @@ export function buildMissingTemplate(reference: EnvSet, target: EnvSet): string 
   const lines = entries.map((entry) => `${entry.key}=${formatValue(entry.value)}`);
 
   return [`# Missing keys for ${target.name}`, `# Generated from reference: ${reference.name}`, ...lines].join("\n");
+}
+
+/**
+ * Build an accurate patch preview that mirrors the Rust backend's
+ * append_missing_env_keys deduplication logic. Parses existing keys
+ * from the target's raw text and only includes entries that would
+ * actually be appended.
+ */
+export function buildPatchPreview(
+  targetRawText: string,
+  entries: MissingEntry[],
+): { preview: string; actualEntries: MissingEntry[] } {
+  // Parse existing keys from the target text (mirrors Rust parse_env_keys)
+  const existingKeys = new Set<string>();
+  for (const line of targetRawText.split(/\r?\n/)) {
+    const key = parseKeyFromEnvLine(line);
+    if (key) existingKeys.add(key);
+  }
+
+  // Filter to only entries the backend would actually append
+  const actualEntries: MissingEntry[] = [];
+  for (const entry of entries) {
+    const key = entry.key.trim();
+    if (existingKeys.has(key)) continue;
+    existingKeys.add(key); // prevent duplicates within entries
+    actualEntries.push(entry);
+  }
+
+  let preview = targetRawText;
+  if (actualEntries.length > 0) {
+    if (!preview.endsWith("\n")) preview += "\n";
+    preview += "\n# Added by Drift\n";
+    for (const entry of actualEntries) {
+      preview += `${entry.key}=${formatValue(entry.value)}\n`;
+    }
+  }
+
+  return { preview, actualEntries };
 }
 
 export function buildMergedTemplate(sets: EnvSet[]): string {
