@@ -6,7 +6,7 @@
 
 **Architecture:** The single `ProjectManagementCard` GlassCard is split into two GlassCards. Card 1 (Project Settings) is collapsible, collapsed by default, containing the project form inputs and actions. Card 2 (Environment Sets) is the primary focus, with action buttons at the top, properly styled set items with role badges, and a collapsible manual entry section at the bottom. `EnvSetItem` is restyled from a cramped `<li>` to a proper inner card with role badge.
 
-**Tech Stack:** Vue 3 Composition API, Tailwind CSS 4, Spool design tokens
+**Tech Stack:** Vue 3 Composition API, Tailwind CSS 4, @stuntrocket/ui design tokens
 
 **Design doc:** `docs/plans/2026-02-22-projects-page-design.md`
 

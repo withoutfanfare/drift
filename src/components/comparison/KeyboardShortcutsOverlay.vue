@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ShortcutEntry } from "../../composables/useKeyboardShortcuts";
 import { SModal } from "@stuntrocket/ui";
-import BaseButton from "../ui/BaseButton.vue";
+import { SButton as BaseButton } from "@stuntrocket/ui";
 
 defineProps<{
   shortcuts: ShortcutEntry[];

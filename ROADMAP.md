@@ -240,29 +240,29 @@ _No pending functional items._
 
 ## Design System Adoption
 
-These items implement the Scooda design system (derived from the Dalil app styleguide) to achieve premium visual uniformity across all Tauri applications. Items are ordered by dependency — foundation must complete before migration, migration before polish.
+These items implement the @stuntrocket/ui design system to achieve premium visual uniformity across all Tauri applications. Items are ordered by dependency — foundation must complete before migration, migration before polish.
 
 ### [Foundation] Integrate @stuntrocket/ui shared component library and design tokens
 - **Priority:** P1 (critical)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
 - **Status:** pending
-- **Description:** Drift uses Vue 3 + Tailwind CSS 4 with its own "Spool" dark glassmorphic design system. Adopting the Scooda design system requires installing @stuntrocket/ui from the local Verdaccio registry, replacing the Spool @theme tokens with Scooda shared tokens, and switching from a dark-only design to a full light/dark mode system. The Spool design has some overlap with Scooda (glassmorphism, blur effects) but the colour palette, typography (Poppins), and spacing scale need alignment.
+- **Description:** Drift uses Vue 3 + Tailwind CSS 4 with its own dark glassmorphic design system. Adopting @stuntrocket/ui requires installing it from the local Verdaccio registry, replacing the existing @theme tokens with @stuntrocket/ui shared tokens, and switching from a dark-only design to a full light/dark mode system. The existing design has some overlap with @stuntrocket/ui (glassmorphism, blur effects) but the colour palette, typography (Poppins), and spacing scale need alignment.
 - **Acceptance criteria:**
   - .npmrc configured with @stuntrocket:registry=http://localhost:4873
   - @stuntrocket/ui installed as a dependency
-  - Spool @theme block in src/styles/main.css replaced with Scooda tokens.css import
+  - Existing @theme block in src/styles/main.css replaced with @stuntrocket/ui tokens.css import
   - Poppins font loaded as primary sans font (replacing system font stack)
-  - Colour palette aligned: accent #60A5FA → Scooda accent #2563EB/#60A5FA with full light/dark tokens
-  - Light mode added (Drift is currently dark-only; Scooda supports both)
-  - Typography scale matches Scooda: body 15px, headings per styleguide
+  - Colour palette aligned: accent #60A5FA → @stuntrocket/ui accent #2563EB/#60A5FA with full light/dark tokens
+  - Light mode added (Drift is currently dark-only; @stuntrocket/ui supports both)
+  - Typography scale matches @stuntrocket/ui: body 15px, headings per styleguide
 
-### [UI Migration] Replace Spool components with @stuntrocket/ui shared components
+### [UI Migration] Replace existing components with @stuntrocket/ui shared components
 - **Priority:** P1 (critical)
 - **Size:** XL (8hrs+)
 - **Added:** 2026-03-19
 - **Status:** pending
-- **Description:** Replace all Spool design system components (GlassCard, BaseButton, BaseSelect, BaseInput, BaseTextarea, KpiCard) with @stuntrocket/ui equivalents. The comparison matrix, filter row, project management views, and inline drift editor all need to be rebuilt with shared components. This is the largest migration item and may need sub-tasks per component category.
+- **Description:** Replace all existing design system components (GlassCard, BaseButton, BaseSelect, BaseInput, BaseTextarea, KpiCard) with @stuntrocket/ui equivalents. The comparison matrix, filter row, project management views, and inline drift editor all need to be rebuilt with shared components. This is the largest migration item and may need sub-tasks per component category.
 - **Acceptance criteria:**
   - GlassCard → @stuntrocket/ui Card with correct surface/blur/shadow properties
   - BaseButton → @stuntrocket/ui Button (primary, secondary, icon variants)
@@ -273,24 +273,24 @@ These items implement the Scooda design system (derived from the Dalil app style
   - All modals use @stuntrocket/ui Modal pattern
   - All toasts use @stuntrocket/ui Toast with status colours
   - AmbientBackground component replaced with @stuntrocket/ui ambient blob pattern
-  - No Spool-specific component files remain
+  - No app-specific component files remain that duplicate @stuntrocket/ui equivalents
 
-### [Polish] Achieve full Scooda styleguide visual conformance
+### [Polish] Achieve full @stuntrocket/ui styleguide visual conformance
 - **Priority:** P2 (important)
 - **Size:** L (3-8hrs)
 - **Added:** 2026-03-19
 - **Status:** pending
-- **Description:** After component migration, apply the remaining Scooda specifications: correct ambient blob colours and animation timing, custom scrollbars, micro-animation timings, macOS titlebar integration, z-index layering, and accessibility compliance. The existing glassmorphic effects should be retained but aligned to Scooda's specific blur/opacity/shadow values rather than Spool's.
+- **Description:** After component migration, apply the remaining @stuntrocket/ui specifications: correct ambient blob colours and animation timing, custom scrollbars, micro-animation timings, macOS titlebar integration, z-index layering, and accessibility compliance. The existing glassmorphic effects should be retained but aligned to @stuntrocket/ui's specific blur/opacity/shadow values.
 - **Acceptance criteria:**
-  - Ambient blobs use Scooda colours (accent, violet #8B5CF6, cyan #06B6D4) not Spool palette
+  - Ambient blobs use @stuntrocket/ui colours (accent, violet #8B5CF6, cyan #06B6D4)
   - Custom scrollbars with accent-tinted thumb (rgba accent values per styleguide)
-  - Micro-animations match Scooda timing: instant 80ms, quick 100-130ms, standard 150ms, smooth 200ms
+  - Micro-animations match @stuntrocket/ui timing: instant 80ms, quick 100-130ms, standard 150ms, smooth 200ms
   - macOS titlebar with drag region and 78px traffic light padding
-  - Z-index layering matches Scooda scale
+  - Z-index layering matches @stuntrocket/ui scale
   - prefers-reduced-motion disables all animations
   - Focus ring on all interactive elements
   - Light mode visually complete and polished (not just a dark mode inversion)
-  - Visual side-by-side comparison with Dalil passes review
+  - Visual side-by-side comparison with @stuntrocket/ui reference app passes review
 
 ## Archived
 

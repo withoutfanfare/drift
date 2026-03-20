@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { EnvSet } from "../../types";
-import BaseButton from "../ui/BaseButton.vue";
+import { SButton as BaseButton } from "@stuntrocket/ui";
 
 defineProps<{
   sets: EnvSet[];

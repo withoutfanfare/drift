@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DriftWarning } from "../../types";
-import BaseButton from "../ui/BaseButton.vue";
+import { SButton as BaseButton } from "@stuntrocket/ui";
 
 defineProps<{
   warnings: DriftWarning[];

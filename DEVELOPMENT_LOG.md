@@ -19,7 +19,7 @@
 - Branch: main
 - Tests passing: pending (no test framework for frontend; Rust tests not re-run for new commands)
 - Build status: pending
-- Notes: All implementations follow existing patterns exactly: module-level ref() for singleton state, composable naming conventions, Tailwind CSS 4 with Spool design tokens, SFC with `<script setup lang="ts">`. The Rust backend gained 3 new commands registered in the invoke_handler. EnvSet type extended with `comments` (Record<string, EnvComment>) and `validationWarnings` (EnvValidationWarning[]). The useEnvParser.ts `parseEnv()` return type changed from `{ values, duplicates }` to `{ values, duplicates, comments }` — all callers updated. No breaking changes to existing functionality.
+- Notes: All implementations follow existing patterns exactly: module-level ref() for singleton state, composable naming conventions, Tailwind CSS 4 with @stuntrocket/ui design tokens, SFC with `<script setup lang="ts">`. The Rust backend gained 3 new commands registered in the invoke_handler. EnvSet type extended with `comments` (Record<string, EnvComment>) and `validationWarnings` (EnvValidationWarning[]). The useEnvParser.ts `parseEnv()` return type changed from `{ values, duplicates }` to `{ values, duplicates, comments }` — all callers updated. No breaking changes to existing functionality.
 
 ## Cycle: 2026-03-20 23:45
 - App: Drift

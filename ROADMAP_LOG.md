@@ -16,7 +16,7 @@
   - [Quality] Add secret value detection warning in comparison matrix (P2, S)
 - **Items added:** none
 - **Items archived:** none
-- **Observations:** All 12 pending functional roadmap items implemented in a single batch cycle. This clears the entire functional backlog — only Design System Adoption items remain pending (3 items: Foundation, UI Migration, Polish). The implementation touched every layer: Rust backend (3 new Tauri commands: rotate_backups, get_file_mtime, write_env_example), 8 new Vue composables (useDebounce, useGrouping, useChangeHistory, useDriftAnalysis, useSecretDetection, useKeyboardShortcuts, useFileWatcher, useEnvExample), enhanced env parser with comment extraction and syntax validation, 3 new comparison sub-components (KeyboardShortcutsOverlay, ValidationPanel, DriftWarningsPanel), file change toast component, and significant updates to ComparisonCard, ComparisonTable, ComparisonTableRow, and App.vue. The EnvSet type was extended with comments and validationWarnings fields. All features integrate cleanly with the existing Spool/Scooda design system patterns.
+- **Observations:** All 12 pending functional roadmap items implemented in a single batch cycle. This clears the entire functional backlog — only Design System Adoption items remain pending (3 items: Foundation, UI Migration, Polish). The implementation touched every layer: Rust backend (3 new Tauri commands: rotate_backups, get_file_mtime, write_env_example), 8 new Vue composables (useDebounce, useGrouping, useChangeHistory, useDriftAnalysis, useSecretDetection, useKeyboardShortcuts, useFileWatcher, useEnvExample), enhanced env parser with comment extraction and syntax validation, 3 new comparison sub-components (KeyboardShortcutsOverlay, ValidationPanel, DriftWarningsPanel), file change toast component, and significant updates to ComparisonCard, ComparisonTable, ComparisonTableRow, and App.vue. The EnvSet type was extended with comments and validationWarnings fields. All features integrate cleanly with the existing @stuntrocket/ui design system patterns.
 
 ## Cycle: 2026-03-19 08:00
 - **Items added:**
@@ -55,10 +55,10 @@
 ## Cycle: 2026-03-19 22:30
 - **Items added (Design System Adoption section):**
   - [Foundation] Integrate @stuntrocket/ui shared component library and design tokens (P1, M)
-  - [UI Migration] Replace Spool components with @stuntrocket/ui shared components (P1, XL)
-  - [Polish] Achieve full Scooda styleguide visual conformance (P2, L)
+  - [UI Migration] Replace existing components with @stuntrocket/ui shared components (P1, XL)
+  - [Polish] Achieve full @stuntrocket/ui styleguide visual conformance (P2, L)
 - **Items archived:** none
-- **Observations:** Added Design System Adoption section. Drift's existing "Spool" design system has philosophical overlap with Scooda (glassmorphism, blur effects, ambient blobs) but diverges on specific values and is dark-only. The migration to Scooda adds light mode support and aligns all visual tokens. This is a significant investment but the existing quality P1s should be resolved first — design adoption can proceed once the core operations are trustworthy.
+- **Observations:** Added Design System Adoption section. Drift's existing design system has philosophical overlap with @stuntrocket/ui (glassmorphism, blur effects, ambient blobs) but diverges on specific values and is dark-only. The migration to @stuntrocket/ui adds light mode support and aligns all visual tokens. This is a significant investment but the existing quality P1s should be resolved first — design adoption can proceed once the core operations are trustworthy.
 
 ## Cycle: 2026-03-21 08:00
 - **Items added:**

@@ -41,7 +41,7 @@ The primary card on the page. Takes visual priority.
 - **Line 2:** Role badge (coloured: local=accent/blue, staging=warning/amber, live=danger/red, other=surface-3/grey) + source text (scanned/file/manual) + key count + duplicate count if any, all in muted/secondary text
 - **Line 3 (optional):** File path in `text-muted`, monospace, truncated — only shown when `filePath` exists
 
-Role badges use the existing Spool status colours:
+Role badges use the existing @stuntrocket/ui status colours:
 - local: `bg-accent-muted text-accent` (blue)
 - staging: `bg-warning/15 text-warning` (amber)
 - live: `bg-danger/15 text-danger` (red)

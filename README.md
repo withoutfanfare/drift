@@ -1,6 +1,6 @@
 # Drift
 
-A Tauri 2 desktop app for Laravel developers to manage `.env` file sets across projects, detect environment drift, and safely patch missing keys. Built with Vue 3 + Tailwind CSS 4 on the frontend and Rust on the backend, styled with the Spool dark glassmorphic design system.
+A Tauri 2 desktop app for Laravel developers to manage `.env` file sets across projects, detect environment drift, and safely patch missing keys. Built with Vue 3 + Tailwind CSS 4 on the frontend and Rust on the backend, styled with the @stuntrocket/ui design system.
 
 ## Features
 
@@ -32,7 +32,7 @@ A Tauri 2 desktop app for Laravel developers to manage `.env` file sets across p
 |-------|-----------|
 | Desktop framework | Tauri 2 |
 | Frontend | Vue 3 (Composition API, `<script setup>`) |
-| Styling | Tailwind CSS 4, Spool design system |
+| Styling | Tailwind CSS 4, @stuntrocket/ui design system |
 | Backend | Rust |
 | Bundler | Vite |
 | Type checking | TypeScript (strict) + vue-tsc |

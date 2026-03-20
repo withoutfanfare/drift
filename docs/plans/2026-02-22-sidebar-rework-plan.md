@@ -6,7 +6,7 @@
 
 **Architecture:** The sidebar becomes a window-level structural `<aside>` spanning full height, separated from content by a 1px border. Projects are listed as clickable rows (replacing the dropdown), with navigation items below a divider. The `AppShell` layout changes from a simple `<main>` wrapper to a `flex[sidebar | content]` split. On mobile (<1024px), the sidebar hides and an inline project selector returns.
 
-**Tech Stack:** Vue 3 Composition API, Tailwind CSS 4, existing Spool design tokens
+**Tech Stack:** Vue 3 Composition API, Tailwind CSS 4, existing @stuntrocket/ui design tokens
 
 **Design doc:** `docs/plans/2026-02-22-sidebar-rework-design.md`
 

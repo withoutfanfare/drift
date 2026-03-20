@@ -5,7 +5,7 @@ import { useMasking } from "../../composables/useMasking";
 import { useSecretDetection } from "../../composables/useSecretDetection";
 import { useChangeHistory } from "../../composables/useChangeHistory";
 import StatusBadge from "./StatusBadge.vue";
-import BaseButton from "../ui/BaseButton.vue";
+import { SButton as BaseButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
   row: KeyAnalysisRow;

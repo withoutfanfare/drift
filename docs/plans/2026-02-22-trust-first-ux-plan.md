@@ -6,7 +6,7 @@
 
 **Architecture:** Seven design sections implemented across 11 tasks in dependency order. New composables provide reactive state for masking and activity logging. New Vue components for diff preview, timeline, backup browser, and empty states. One new Rust backend command for backup discovery. Existing components receive label renames and integration points.
 
-**Tech Stack:** Vue 3 Composition API, Tailwind CSS 4 (Spool tokens), Tauri 2 Rust backend, localStorage persistence.
+**Tech Stack:** Vue 3 Composition API, Tailwind CSS 4 (@stuntrocket/ui tokens), Tauri 2 Rust backend, localStorage persistence.
 
 **Design doc:** `docs/plans/2026-02-22-trust-first-ux-design.md`
 

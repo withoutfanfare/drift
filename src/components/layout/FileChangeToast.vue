@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { FileChangeEvent } from "../../types";
-import BaseButton from "../ui/BaseButton.vue";
+import { SButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
   events: FileChangeEvent[];
@@ -38,8 +38,8 @@ const summary = computed(() => {
       <span class="text-sm text-text-primary truncate">{{ summary }}</span>
     </div>
     <div class="flex items-center gap-2 shrink-0">
-      <BaseButton variant="primary" size="sm" @click="emit('reload')">Reload</BaseButton>
-      <BaseButton variant="ghost" size="sm" @click="emit('dismiss')">Dismiss</BaseButton>
+      <SButton variant="primary" size="sm" @click="emit('reload')">Reload</SButton>
+      <SButton variant="ghost" size="sm" @click="emit('dismiss')">Dismiss</SButton>
     </div>
   </div>
 </template>

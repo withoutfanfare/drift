@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Drift is a Tauri 2 desktop app for Laravel developers to manage `.env` file sets across projects, detect environment drift, and safely patch missing keys. Built with Vue 3 + Tailwind CSS 4 on the frontend and Rust on the backend, styled with the Spool dark glassmorphic design system.
+Drift is a Tauri 2 desktop app for Laravel developers to manage `.env` file sets across projects, detect environment drift, and safely patch missing keys. Built with Vue 3 + Tailwind CSS 4 on the frontend and Rust on the backend, styled with the @stuntrocket/ui design system.
 
 ## Development Commands
 
@@ -45,7 +45,7 @@ Single-page Vue 3 app using Composition API with `<script setup>`. Entry point: 
 - `project/` — ProjectManagementCard, ProjectSelector, ProjectForm, FileUploadActions, ManualSetForm, EnvSetList, EnvSetItem
 - `comparison/` — ComparisonCard, FilterRow, TargetRow, InlineDriftEditor, ComparisonTable, ComparisonTableRow, StatusBadge, StatusMessage, WarningsList
 
-**Styling** (`src/styles/main.css`): Tailwind CSS 4 with Spool design tokens in `@theme {}` block. Dark-mode-only with glassmorphic panels, ambient background blobs, and custom scrollbars.
+**Styling** (`src/styles/main.css`): Tailwind CSS 4 with @stuntrocket/ui design tokens in `@theme {}` block. Dark-mode-only with glassmorphic panels, ambient background blobs, and custom scrollbars.
 
 ### Backend (`src-tauri/src/lib.rs`)
 
@@ -69,7 +69,7 @@ All Rust structs use `#[serde(rename_all = "camelCase")]` for JSON interop with 
 - Rust serde structs use camelCase for JSON field names
 - Vue 3 Composition API with `<script setup lang="ts">` — no Options API
 - Tailwind CSS 4 with CSS-first `@theme {}` config — no `tailwind.config.js`
-- Spool design system: dark mode, glassmorphic cards, accent blue (#60A5FA)
+- @stuntrocket/ui design system: dark mode, glassmorphic cards, accent blue (#60A5FA)
 - Composables use module-level `ref()` for singleton state (no provide/inject needed)
 - Safe file operations: always validate paths, parse before write, backup before mutate
 - localStorage is the only persistence layer (no database)
