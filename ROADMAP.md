@@ -84,6 +84,46 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Group headers show count of variables and count of drift items within the group
   - Grouping can be toggled off to restore flat list view
 
+### [Performance] Debounce and batch comparison matrix recalculations
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-19
+- **Status:** pending
+- **Description:** The comparison matrix recalculates on every env mutation, filter change, and set addition. When users perform rapid sequential edits (patching multiple keys, toggling filters), this triggers redundant recalculations that can cause UI lag with large env files. Debouncing matrix recalculation and batching mutation triggers would keep the UI responsive during bulk editing sessions.
+- **Acceptance criteria:**
+  - Matrix recalculation debounced with a 150ms delay after the last trigger
+  - Sequential mutations within the debounce window batched into a single recalculation
+  - No visible staleness — matrix always reflects the final state within 200ms of the last change
+  - Filter changes and env mutations share the same debounce pipeline
+  - Performance measurably improved for .env files with 100+ keys
+
+### [Innovation] Add cross-environment value drift analysis with smart suggestions
+- **Priority:** P3 (nice-to-have)
+- **Size:** M (1-3hrs)
+- **Added:** 2026-03-19
+- **Status:** pending
+- **Description:** Drift currently shows which keys are missing across environments but does not analyse the values themselves. Common drift patterns — a staging environment still pointing at a production database, a debug flag left enabled in production, or an API URL using HTTP instead of HTTPS — are invisible until they cause an incident. Analysing value patterns across environments and flagging suspicious drift would add an intelligence layer beyond simple key-presence comparison.
+- **Acceptance criteria:**
+  - Value analysis rules detect: production URLs in non-production envs, debug/testing flags in production-like envs, HTTP where HTTPS is expected, localhost references in non-local envs
+  - Flagged values highlighted with warning badges in the comparison matrix
+  - Each warning includes a description of the concern and suggested action
+  - Rules configurable (enable/disable per rule, custom patterns)
+  - Analysis runs automatically when env sets are loaded or refreshed
+
+### [Feature] Generate .env.example template from existing env files
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-20
+- **Status:** pending
+- **Description:** Laravel projects conventionally include a .env.example file documenting all expected environment variables with placeholder values. Drift already parses and analyses env files across environments — generating a .env.example template from the union of all keys (with values replaced by descriptive placeholders or empty strings) would automate a tedious manual task and ensure the example file stays in sync with actual usage.
+- **Acceptance criteria:**
+  - "Generate .env.example" action available from the project toolbar or context menu
+  - Template includes the union of all keys across all loaded env sets
+  - Values replaced with descriptive placeholders (e.g. DB_PASSWORD=your_database_password)
+  - Keys grouped by service prefix (matching the existing grouping feature's logic)
+  - Output written to the project root as .env.example (with confirmation if file already exists)
+  - Generated template includes comments indicating which environments define each key
+
 ## Design System Adoption
 
 These items implement the Scooda design system (derived from the Dalil app styleguide) to achieve premium visual uniformity across all Tauri applications. Items are ordered by dependency — foundation must complete before migration, migration before polish.
