@@ -15,7 +15,7 @@ const emit = defineEmits<{
 <template>
   <SModal :open="true" max-width="28rem" @close="emit('close')">
     <template #header>
-      <div class="px-5 py-4 border-b border-border-subtle">
+      <div class="px-5 py-4 border-b border-border/70">
         <h3 class="text-sm font-semibold text-text-primary">Keyboard shortcuts</h3>
         <p class="text-xs text-text-muted mt-1">Navigate and manage the comparison matrix faster.</p>
       </div>
@@ -32,7 +32,7 @@ const emit = defineEmits<{
             <span class="text-xs font-medium text-text-secondary">{{ shortcut.label }}</span>
             <span class="text-[11px] text-text-muted block">{{ shortcut.description }}</span>
           </div>
-          <kbd class="shrink-0 rounded-[var(--radius-sm)] border border-border-subtle bg-surface-1/80 px-2 py-0.5 text-[11px] font-mono text-text-tertiary">
+          <kbd class="shrink-0 rounded-md border border-border/70 bg-surface-secondary/50 px-2 py-0.5 text-[11px] font-mono text-text-tertiary">
             {{ shortcut.keys }}
           </kbd>
         </div>
@@ -40,7 +40,7 @@ const emit = defineEmits<{
     </div>
 
     <template #footer>
-      <div class="flex justify-end px-5 py-3 border-t border-border-subtle">
+      <div class="flex justify-end px-5 py-3 border-t border-border/70">
         <BaseButton variant="secondary" size="sm" @click="emit('close')">Close</BaseButton>
       </div>
     </template>

@@ -3,41 +3,22 @@
 @import "@stuntrocket/ui/base.css";
 @import "@stuntrocket/ui/scrollbar.css";
 @import "@stuntrocket/ui/ambient.css";
+@import "@stuntrocket/ui/style.css";
 @source "../";
 
-/* ── Drift accent override (blue) ── */
-.dark {
-  --color-accent: #60a5fa;
-  --color-accent-hover: #93c5fd;
-}
-
 /* ── Drift-specific tokens ──
-   These extend the library with app-specific values
-   that don't have library equivalents. */
+   Extend the library only where Drift needs values it doesn't provide.
+   Use library tokens (surface, surface-secondary, border, accent, etc.)
+   with opacity modifiers for all standard UI patterns. */
 @theme {
-  /* Additional surface layers for Drift's deeper dark UI */
+  /* Deeper base surface for focus rings and ambient contrast */
   --color-surface-base: #0e0e0e;
-  --color-surface-0: #171717;
-  --color-surface-1: #1c1c1e;
-  --color-surface-2: #27272a;
-  --color-surface-3: #3f3f46;
 
-  /* Drift uses a distinct muted text tier below tertiary */
+  /* Text tier below the library's tertiary */
   --color-text-muted: #525252;
 
-  /* Accent-muted for subtle accent backgrounds */
-  --color-accent-muted: #60a5fa33;
-
-  /* Status info alias (same as accent) */
-  --color-info: #60a5fa;
-
-  /* Border variants */
+  /* Accent border for highlighted sections */
   --color-border-accent: #60a5fa33;
-
-  /* Shadows specific to Drift's glassmorphic panels */
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --shadow-elevated: 0 16px 48px rgba(0, 0, 0, 0.6);
-  --shadow-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   /* Animations */
   --animate-fade-in: fade-in 400ms ease-out both;
@@ -61,14 +42,15 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-/* ── Glass card utility ── */
+/* ── Glass card utility ──
+   Mirrors the library's .card-glass but with Drift's shadow treatment */
 .glass-card {
   background: color-mix(in srgb, #0e0e0e 42%, transparent);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card), var(--shadow-inset-highlight);
+  border: 1px solid color-mix(in srgb, white 4%, transparent);
+  border-radius: var(--radius-xl, 12px);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
 }
 
 /* ── Focus ring utility ── */

@@ -148,8 +148,8 @@ function onProjectChange(id: string) {
         :key="navPage"
         class="focus-ring rounded-[var(--radius-md)] px-3 py-1.5 text-[13px] capitalize transition-colors"
         :class="page === navPage
-          ? 'bg-accent-muted text-accent font-medium'
-          : 'text-text-secondary hover:text-text-primary'"
+          ? 'bg-accent/8 text-accent font-medium'
+          : 'text-text-primary/75 hover:text-text-primary'"
         :aria-current="page === navPage ? 'page' : undefined"
         @click="openPage(navPage)"
       >

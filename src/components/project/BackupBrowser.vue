@@ -112,7 +112,7 @@ function humanReason(reason: string): string {
         <li
           v-for="backup in backups"
           :key="backup.path"
-          class="rounded-[var(--radius-md)] border border-border-subtle bg-surface-2/30 px-3 py-2"
+          class="rounded-lg border border-border/60 bg-surface-secondary/28 px-3 py-2"
         >
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">

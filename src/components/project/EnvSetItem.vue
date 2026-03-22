@@ -26,7 +26,7 @@ const roleBadgeVariant = computed(() => {
 </script>
 
 <template>
-  <li class="rounded-[var(--radius-md)] border border-border-subtle bg-surface-1/50 p-3">
+  <li class="rounded-lg border border-border/60 bg-surface-secondary/28 p-3">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0 flex-1">
         <p class="text-sm font-medium text-text-primary truncate">{{ set.name }}</p>

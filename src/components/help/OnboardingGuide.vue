@@ -123,7 +123,7 @@ const safetyPoints = [
     </div>
 
     <!-- Progress bar -->
-    <div class="h-1 rounded-full bg-surface-2 mb-5">
+    <div class="h-1 rounded-full bg-surface-secondary mb-5">
       <div
         class="h-full rounded-full transition-all duration-500 ease-out"
         :class="progressPercent === 100 ? 'bg-success' : 'bg-accent'"
@@ -143,7 +143,7 @@ const safetyPoints = [
             class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors"
             :class="step.complete
               ? 'border-success bg-success/15 text-success'
-              : 'border-surface-3 bg-surface-2/50 text-text-muted'"
+              : 'border-border bg-surface-secondary/50 text-text-tertiary'"
           >
             <svg v-if="step.complete" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -153,7 +153,7 @@ const safetyPoints = [
           <div
             v-if="index < steps.length - 1"
             class="w-0.5 flex-1 my-1.5 rounded-full"
-            :class="step.complete ? 'bg-success/30' : 'bg-surface-3/50'"
+            :class="step.complete ? 'bg-success/30' : 'bg-border/50'"
           />
         </div>
 
@@ -192,9 +192,9 @@ const safetyPoints = [
       <div
         v-for="feature in features"
         :key="feature.title"
-        class="rounded-[var(--radius-lg)] border border-border-subtle bg-surface-2/25 p-3.5 transition-colors hover:border-border-default"
+        class="rounded-xl border border-border/60 bg-surface-secondary/28 p-3.5 transition-colors hover:border-border"
       >
-        <div class="flex h-7 w-7 items-center justify-center rounded-[var(--radius-md)] bg-surface-2/80 mb-2.5">
+        <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-secondary/50 mb-2.5">
           <!-- Compare -->
           <svg v-if="feature.icon === 'compare'" class="h-3.5 w-3.5 text-text-secondary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>

@@ -7,7 +7,7 @@ defineProps<{
 </script>
 
 <template>
-  <header class="px-1 pb-3 border-b border-border-subtle">
+  <header class="px-1 pb-3 border-b border-border/60">
     <p v-if="eyebrow" class="text-[10px] font-bold uppercase tracking-wider text-text-muted">
       {{ eyebrow }}
     </p>

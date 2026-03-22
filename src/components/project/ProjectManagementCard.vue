@@ -327,7 +327,7 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
     <EnvSetList :sets="sets" @remove="onRemoveSet" @scan="onScan" @load-files="triggerFileInput" />
 
     <!-- Manual entry (collapsible) -->
-    <div v-if="sets.length > 0" class="mt-4 border-t border-border-subtle pt-3">
+    <div v-if="sets.length > 0" class="mt-4 border-t border-border/60 pt-3">
       <button
         class="focus-ring flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors rounded"
         :aria-expanded="showManualForm"
@@ -351,7 +351,7 @@ function onAddManual(name: string, role: EnvRole, rawText: string) {
     </div>
 
     <!-- Danger zone -->
-    <div v-if="sets.length > 0" class="mt-4 border-t border-border-subtle pt-3">
+    <div v-if="sets.length > 0" class="mt-4 border-t border-border/60 pt-3">
       <SButton variant="danger" size="sm" @click="confirmingClear = true">
         Remove all .env files from Drift
       </SButton>

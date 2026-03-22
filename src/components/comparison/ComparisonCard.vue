@@ -15,7 +15,7 @@ import { upsertEnvKeyInRaw } from "../../composables/useEnvMutations";
 import { buildMissingTemplate, buildMergedTemplate, buildPatchPreview, getMissingEntries } from "../../composables/useTemplates";
 import { appendMissingEnvKeys, upsertEnvKey, writeEnvFile, writeEnvExample, rotateBackups } from "../../composables/useTauriCommands";
 import { asFilter } from "../../composables/useRoles";
-import { SCard, SButton, SSelect, SInput } from "@stuntrocket/ui";
+import { SCard, SButton, SSelect, SSearchInput } from "@stuntrocket/ui";
 import DiffPreview from "./DiffPreview.vue";
 import ComparisonTable from "./ComparisonTable.vue";
 import WarningsList from "./WarningsList.vue";
@@ -439,30 +439,22 @@ async function onSaveFile(setId: string) {
 <template>
   <SCard variant="glass" class="p-4">
     <!-- Compact toolbar: selects + actions -->
-    <div class="flex flex-wrap items-end gap-2 mb-3">
-      <div class="w-[120px] max-[900px]:w-full max-[900px]:flex-1">
-        <SSelect v-model="filter" aria-label="Filter rows">
-          <option value="all">All</option>
-          <option value="missing">Missing</option>
-          <option value="drift">Drift</option>
-          <option value="unsafe">Unsafe</option>
-          <option value="aligned">Aligned</option>
-        </SSelect>
-      </div>
-      <div class="w-[140px] max-[900px]:w-full max-[900px]:flex-1">
-        <SInput v-model="search" data-search-input placeholder="Search keys..." />
-      </div>
-      <div class="flex-1 min-w-[140px]">
-        <SSelect v-model="referenceSetId" aria-label="Compare from">
-          <option v-for="s in sets" :key="s.id" :value="s.id">From: {{ s.name }} ({{ s.role }})</option>
-        </SSelect>
-      </div>
-      <div class="flex-1 min-w-[140px]">
-        <SSelect v-model="targetSetId" aria-label="Compare to">
-          <option v-for="s in sets" :key="s.id" :value="s.id">To: {{ s.name }} ({{ s.role }})</option>
-        </SSelect>
-      </div>
-      <div class="flex gap-1.5 max-[900px]:w-full max-[900px]:mt-1">
+    <div class="flex flex-wrap items-center gap-2 mb-3">
+      <SSelect v-model="filter" size="sm" aria-label="Filter rows" class="w-[100px]">
+        <option value="all">All</option>
+        <option value="missing">Missing</option>
+        <option value="drift">Drift</option>
+        <option value="unsafe">Unsafe</option>
+        <option value="aligned">Aligned</option>
+      </SSelect>
+      <SSearchInput v-model="search" size="sm" data-search-input placeholder="Search keys..." class="min-w-[180px] flex-1" />
+      <SSelect v-model="referenceSetId" size="sm" aria-label="Compare from" class="flex-1 min-w-[140px]">
+        <option v-for="s in sets" :key="s.id" :value="s.id">From: {{ s.name }} ({{ s.role }})</option>
+      </SSelect>
+      <SSelect v-model="targetSetId" size="sm" aria-label="Compare to" class="flex-1 min-w-[140px]">
+        <option v-for="s in sets" :key="s.id" :value="s.id">To: {{ s.name }} ({{ s.role }})</option>
+      </SSelect>
+      <div class="ml-auto flex items-center gap-1.5">
         <SButton variant="primary" size="sm" @click="onCopyMissing">Copy missing</SButton>
         <SButton variant="secondary" size="sm" @click="onCopyMerged">Export .env</SButton>
         <SButton variant="secondary" size="sm" @click="onGenerateEnvExample">.env.example</SButton>
@@ -562,7 +554,7 @@ async function onSaveFile(setId: string) {
       <p class="text-[11px] text-text-muted mt-1">A backup is created automatically before each save.</p>
     </div>
 
-    <div class="mt-3 rounded-[var(--radius-md)] border border-border-subtle bg-surface-1/45 p-3">
+    <div class="mt-3 rounded-lg border border-border/70 bg-surface-secondary/28 p-3">
       <div class="flex items-center justify-between gap-2">
         <h3 class="text-sm font-semibold text-text-secondary">Warnings and coverage</h3>
         <SButton variant="ghost" size="sm" @click="showWarnings = !showWarnings">

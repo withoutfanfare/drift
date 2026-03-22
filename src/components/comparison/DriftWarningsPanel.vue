@@ -21,7 +21,7 @@ const emit = defineEmits<{
       <div
         v-for="(w, i) in warnings"
         :key="i"
-        class="rounded-[var(--radius-sm)] bg-surface-1/40 px-2.5 py-1.5"
+        class="rounded-md bg-surface-secondary/30 px-2.5 py-1.5"
       >
         <div class="flex items-start gap-2">
           <code class="text-[11px] font-mono text-accent shrink-0">{{ w.key }}</code>

@@ -25,13 +25,13 @@ const removedCount = computed(() => diffLines.value.filter((l) => l.type === "re
 <template>
   <SModal :open="true" max-width="42rem" @close="emit('cancel')">
     <template #header>
-      <div class="px-5 py-4 border-b border-border-subtle">
+      <div class="px-5 py-4 border-b border-border/70">
         <h3 class="text-sm font-semibold text-text-primary">{{ title }}</h3>
         <p class="text-xs text-text-muted mt-1 font-mono truncate">{{ filePath }}</p>
       </div>
     </template>
 
-    <div class="px-5 py-3 border-b border-border-subtle">
+    <div class="px-5 py-3 border-b border-border/70">
       <p class="text-xs text-text-secondary">{{ summary }}</p>
       <div class="flex gap-3 mt-1.5">
         <span v-if="addedCount > 0" class="text-xs text-success font-medium">+{{ addedCount }} added</span>
@@ -72,7 +72,7 @@ const removedCount = computed(() => diffLines.value.filter((l) => l.type === "re
     </div>
 
     <template #footer>
-      <div class="flex justify-end gap-2 px-5 py-3.5 border-t border-border-subtle">
+      <div class="flex justify-end gap-2 px-5 py-3.5 border-t border-border/70">
         <SButton variant="secondary" size="sm" @click="emit('cancel')">Cancel</SButton>
         <SButton variant="primary" size="sm" @click="emit('confirm')">{{ confirmLabel ?? 'Apply changes' }}</SButton>
       </div>

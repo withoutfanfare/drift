@@ -125,7 +125,7 @@ async function browseForProjectPath() {
       </template>
     </div>
 
-    <div v-if="!creating" class="border-t border-border-subtle pt-3">
+    <div v-if="!creating" class="border-t border-border/60 pt-3">
       <SButton variant="danger" size="sm" @click="confirmingDelete = true">
         Remove project from Drift
       </SButton>

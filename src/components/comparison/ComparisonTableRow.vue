@@ -262,7 +262,7 @@ function cellIsMasked(setId: string): boolean {
   </tr>
 
   <!-- Expanded action panel -->
-  <tr v-if="expanded" class="bg-surface-1/40">
+  <tr v-if="expanded" class="bg-surface-secondary/25">
     <td :colspan="2 + sets.length" class="px-4 py-3">
       <div class="space-y-3">
         <!-- Panel heading -->
@@ -307,7 +307,7 @@ function cellIsMasked(setId: string): boolean {
         <!-- Change history (collapsible) -->
         <div
           v-if="showHistory && keyHistory.length > 0"
-          class="rounded-[var(--radius-md)] bg-surface-1/60 border border-border-subtle px-3 py-2 max-h-[120px] overflow-y-auto"
+          class="rounded-lg border border-border/60 bg-surface-secondary/28 px-3 py-2 max-h-[120px] overflow-y-auto"
         >
           <p class="text-[11px] font-medium text-text-tertiary mb-1">Change history</p>
           <div v-for="entry in keyHistory.slice(0, 20)" :key="entry.timestamp" class="text-[11px] flex items-center gap-2 py-0.5">
@@ -327,7 +327,7 @@ function cellIsMasked(setId: string): boolean {
           <input
             v-model="editValue"
             type="text"
-            class="flex-1 rounded-[var(--radius-md)] border border-border-default bg-surface-0/60 px-2.5 py-1.5 font-mono text-xs text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40"
+            class="flex-1 rounded-md border border-border bg-surface/60 px-2.5 py-1.5 font-mono text-xs text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             @click.stop
             @keydown.stop
           />

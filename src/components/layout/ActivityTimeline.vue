@@ -25,7 +25,7 @@ function formatTime(timestamp: number): string {
 }
 
 const categoryStyles: Record<ActivityCategory, { dot: string; icon: string }> = {
-  info: { dot: "bg-info", icon: "text-info" },
+  info: { dot: "bg-accent", icon: "text-accent" },
   write: { dot: "bg-warning", icon: "text-warning" },
   destructive: { dot: "bg-danger", icon: "text-danger" },
   success: { dot: "bg-success", icon: "text-success" },
@@ -34,7 +34,7 @@ const categoryStyles: Record<ActivityCategory, { dot: string; icon: string }> = 
 </script>
 
 <template>
-  <div class="border-t border-border-subtle">
+  <div class="border-t border-border/60">
     <button
       class="focus-ring w-full flex items-center gap-2 px-4 py-2.5 text-left"
       :aria-expanded="expanded"
@@ -67,7 +67,7 @@ const categoryStyles: Record<ActivityCategory, { dot: string; icon: string }> = 
           class="group"
         >
           <button
-            class="focus-ring w-full flex items-start gap-2.5 rounded-[var(--radius-md)] px-2 py-1.5 text-left hover:bg-surface-2/50 transition-colors"
+            class="focus-ring w-full flex items-start gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-surface-secondary/50 transition-colors"
             @click="entry.detail ? toggleEntry(entry.id) : undefined"
           >
             <span

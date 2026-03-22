@@ -19,7 +19,7 @@ const stats = computed(() => [
 </script>
 
 <template>
-  <div class="glass-card flex divide-x divide-border-subtle animate-scale-in">
+  <div class="card-glass flex divide-x divide-border/30 animate-scale-in">
     <div
       v-for="stat in stats"
       :key="stat.label"
