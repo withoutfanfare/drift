@@ -1,5 +1,15 @@
 # Drift Development Log
 
+## Cycle: 2026-03-25 06:00
+- App: Drift
+- Items completed:
+  - [Foundation] Integrate @stuntrocket/ui shared component library and design tokens (P1, M) — Switched @stuntrocket/ui dependency from local `file:` reference to Verdaccio registry (`^0.9.0`). Replaced existing `@theme` block in `src/styles/main.css` with @stuntrocket/ui token imports (`tokens.css`, `base.css`, `scrollbar.css`, `ambient.css`, `style.css`). Added `@source` directive for Tailwind to scan library classes. Drift-specific tokens retained in a separate `@theme` block (glass card surfaces, text-muted, border-accent, animations) with `.dark` overrides. Added Poppins font via Google Fonts with preconnect hints. Updated Tauri CSP to allow Google Fonts domains. Removed hardcoded `class="dark"` from `<html>` and initialised `useTheme({ storageKey: 'drift-theme-mode' })` for 3-mode light/dark/system theme cycling. Added `ThemeToggle.vue` component with sun/moon/monitor icons integrated into the AppShell titlebar. Replaced hardcoded rgba shadow in `ComparisonTable.vue` with `var(--color-border)` token.
+- Items attempted but failed: none
+- Branch: feature/design-tokens-v2
+- Tests passing: yes (cargo check clean, cargo clippy clean, vue-tsc clean, vite build clean)
+- Build status: pending
+- Notes: Most changes were already present as uncommitted work from a prior incomplete integration cycle. Key fixes this session: switching from `file:` to registry dependency (the `file:` reference was creating symlinks that broke vite build due to unresolved `vue-router` imports from the local stuntrocket-ui path), deleting stale `package-lock.json` to clear cached resolution, and adding the `@source` directive for Tailwind class scanning.
+
 ## Cycle: 2026-03-20 16:00
 - App: Drift
 - Items completed (12 functional roadmap items):

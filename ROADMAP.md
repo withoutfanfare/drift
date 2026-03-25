@@ -236,7 +236,174 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 
 ## Pending
 
-_No pending functional items._
+### [Distribution] Add Tauri auto-updater with release notes display for seamless version delivery
+- **Priority:** P2 (important)
+- **Size:** M (1-3hrs)
+- **Added:** 2026-03-23
+- **Status:** pending
+- **Description:** Drift has no update mechanism — users must manually discover, download, and replace the application binary to get new versions. As Drift's feature set matures (multi-project dashboard pending, dependency analysis pending, format preservation pending), delivering fixes and improvements without manual intervention becomes important for maintaining user trust. Tauri's built-in updater plugin with a release notes panel would ensure users always run the latest version, matching the auto-updater items already planned for Grove, Fuse, and Amber. This is the only Distribution-category gap in Drift's pending roadmap.
+- **Acceptance criteria:**
+  - Tauri updater plugin configured with update endpoint and code signing
+  - Update check on app launch with non-intrusive notification banner (not modal)
+  - Release notes displayed in a panel before the user confirms installation
+  - "Install now" and "Remind me later" options; deferred updates install on next launch
+  - Current version and last update check timestamp visible in settings
+  - Update progress indicator during download and installation
+
+### [Feature] Add .env schema definition file support with type validation and required variable enforcement
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-23
+- **Status:** pending
+- **Description:** The .env.example generator (completed) documents which variables exist, and the secret detection (completed) flags sensitive values, but neither enforces what a valid .env file should contain. A `.env.schema.json` definition file specifying expected types (string, integer, boolean, URL, email), required variables per environment, allowed values (enumerations), and format patterns (regex) would let Drift validate an env file against its schema on load — catching misconfigurations like a non-numeric value in a port field, a missing required variable in production, or an invalid URL format before they cause runtime failures.
+- **Acceptance criteria:**
+  - Schema definition file format (`.env.schema.json`) supporting: variable name, type (string, integer, boolean, url, email), required flag, allowed values (enum), pattern (regex), description
+  - Schema validation runs on env file load when a schema file is present in the project root
+  - Validation errors shown per-variable in the comparison matrix (inline warning badges)
+  - "Generate schema" action creates a schema file from the current env file structure (types inferred from values)
+  - Schema violations filterable in the comparison matrix (show only invalid variables)
+  - Schema file format documented in a tooltip or help overlay
+
+### [UX/UI] Add environment variable dependency annotations showing which variables reference each other
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-23
+- **Status:** pending
+- **Description:** Some environment variables are logically dependent — `DATABASE_URL` is composed from `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD`; `REDIS_URL` references `REDIS_HOST` and `REDIS_PORT`; `APP_URL` affects `ASSET_URL` and `SESSION_DOMAIN`. When one variable in a dependency group changes, related variables may need updating too, but this relationship is invisible in the comparison matrix. Annotating known dependency patterns (auto-detected from common Laravel conventions and user-definable) and highlighting dependent variables when any member of a group is modified would prevent partial configuration updates that leave related variables inconsistent.
+- **Acceptance criteria:**
+  - Common Laravel dependency patterns auto-detected: DATABASE_URL ↔ DB_* components, REDIS_URL ↔ REDIS_* components, APP_URL → ASSET_URL/SESSION_DOMAIN
+  - Dependency indicators displayed on variable rows in the comparison matrix (subtle link icon)
+  - When a variable in a dependency group is modified, related variables highlighted with "check this too" badge
+  - Custom dependency groups definable in project settings (for app-specific patterns)
+  - Dependency view expandable from any variable row showing all related variables in the group
+  - Dependencies are advisory only — no blocking of writes to partial groups
+
+### [Performance] Add multi-project env file caching with modification-time invalidation for instant project switching
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-23
+- **Status:** pending
+- **Description:** When switching between registered projects or refreshing the active project, Drift re-parses all `.env` files from disk even if they haven't changed since the last parse. For users managing 3-5 projects with 5+ env files each, this introduces perceptible latency on every project switch and manual refresh. Caching parsed `EnvSet` results keyed by file path and modification timestamp (`mtime`) — and invalidating only when the file's mtime changes — would make project switching and refresh effectively instantaneous for unchanged files. The existing file watcher (completed) already detects external changes; the cache invalidation can hook into the same detection path rather than requiring a separate check.
+- **Acceptance criteria:**
+  - Parsed env file results cached in memory keyed by file path and modification timestamp
+  - Cache hit returns the previously parsed EnvSet without re-reading or re-parsing the file
+  - Cache invalidated when the file watcher detects a change or when mtime differs from cached value
+  - Project switching latency reduced to under 50ms for projects with unchanged env files
+  - Cache cleared when a project is removed or when env files are added/removed
+  - No increase in memory usage beyond the size of the parsed env data (already held in reactive state)
+
+### [Feature] Add multi-project drift summary dashboard showing aggregate status across all registered projects
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** pending
+- **Description:** Users managing .env drift across 3-5 Laravel projects must switch between projects one at a time to check their drift status — missing keys, value warnings, stale files. There is no aggregate view showing which projects need attention. A summary dashboard displaying each registered project with key metrics (total keys, missing key count, warning count, last modified timestamp) would let developers triage their project portfolio at a glance and focus on the project with the most urgent drift, rather than checking each one sequentially. This is especially valuable for developers maintaining multiple microservices or multi-environment deployments.
+- **Acceptance criteria:**
+  - Dashboard view accessible from the main navigation showing all registered projects
+  - Per-project summary card displaying: project name, env file count, total unique keys, missing key count, drift warning count, last file modification time
+  - Projects with drift issues highlighted with warning badges (amber for missing keys, red for value warnings)
+  - Click on a project card navigates to that project's comparison matrix
+  - Dashboard data computed from cached env file state (no file re-parsing on dashboard load)
+  - "Refresh all" action re-scans all projects and updates the dashboard
+
+### [Quality] Add .env file format preservation maintaining original comment positions, blank lines, and variable ordering during patch operations
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** pending
+- **Description:** When Drift appends missing keys or upserts values, the Rust backend writes to .env files using a line-by-line approach that preserves existing key-value pairs but does not guarantee preservation of blank line separators between groups, comment positioning relative to the variables they document, or the original variable ordering within the file. The inline documentation feature (completed) parses comments for display, and the service prefix grouping (completed) organises the comparison matrix, but the write path may disrupt the careful formatting that developers maintain in their .env files — especially the blank-line separation between service groups (DB_, MAIL_, AWS_) that makes files human-scannable. Preserving the original file structure during mutations would prevent Drift from degrading the readability of the files it manages.
+- **Acceptance criteria:**
+  - Upsert operations preserve: blank lines between variable groups, comment lines above and inline with variables, original variable ordering
+  - New keys appended at the end of the file (or within the correct service group if grouping is detectable) with appropriate blank-line separation
+  - File encoding preserved (no BOM introduction or line-ending changes)
+  - Backup files (existing feature) created before any format-altering write
+  - Write output byte-identical to input for files where only values (not structure) change
+  - Round-trip test: read → write without changes → file unchanged
+
+### [Quality] Add unused environment variable detection identifying keys not referenced in application source code
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** pending
+- **Description:** Drift shows drift between environment files — missing keys, value differences, suspicious patterns — but cannot tell whether an environment variable is actually used by the application. Over time, .env files accumulate legacy variables from removed features, deprecated integrations, and copied-from-example defaults that serve no purpose. Scanning the project's source code for common environment access patterns (Laravel's `env()` and `config()` calls, Node's `process.env`, Python's `os.environ`) and flagging variables with no code reference would help developers clean up configuration debt and reduce confusion during drift analysis sessions. The existing project root path (already registered for env file scanning) provides the scope for source code search.
+- **Acceptance criteria:**
+  - "Detect unused" action available from the project toolbar or comparison matrix
+  - Scans project source files (PHP, JS/TS, Python) for environment variable references using common patterns: `env('KEY')`, `process.env.KEY`, `os.environ['KEY']`, `getenv('KEY')`
+  - Variables with no detected code reference flagged with "Potentially unused" badge in the comparison matrix
+  - Unused variables filterable in the comparison matrix (show only unused, hide unused)
+  - Scan excludes vendor/, node_modules/, .git/ directories (matching existing env file scan exclusions)
+  - Results are advisory only — no automatic deletion or modification of env files
+  - Scan completes within 5 seconds for typical Laravel projects (< 5000 source files)
+
+### [Innovation] Add environment configuration health score grading each project's env hygiene at a glance
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** pending
+- **Description:** Drift surfaces individual issues — missing keys, suspicious values, stale files, syntax warnings — but there is no aggregate measure of a project's environment configuration health. Developers managing 3-5 projects need to quickly answer "which project's env config needs attention?" without opening each one. A composite health score (0-100) per project, computed from key completeness across environments, value warning count, schema compliance (if schema exists, pending), secret exposure risk, and file freshness — displayed as a grade on project cards and in the multi-project dashboard (pending) — would make env health visible at a glance and prioritise remediation effort.
+- **Acceptance criteria:**
+  - Health score (0-100) computed per project from weighted factors: key completeness (30%), value warnings (25%), syntax validation (20%), secret masking coverage (15%), file freshness (10%)
+  - Score displayed as a letter grade (A-F) and numeric value on project cards
+  - Grade breakdown viewable per project showing contribution of each factor
+  - Factors linked to existing features: completeness from key analysis, warnings from drift detection (completed), syntax from validation (completed), secrets from detection (completed)
+  - Score updates automatically when env files are loaded or refreshed
+  - Health score included in the multi-project dashboard summary cards (pending item)
+
+### [UX/UI] Add comparison matrix column reordering for custom environment priority layouts
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** pending
+- **Description:** The comparison matrix displays environment columns in the order env files were loaded or scanned, which may not match the logical promotion order (local → testing → staging → production) that developers use when reviewing drift. When comparing 4+ environments, column order matters for visual scanning — the eye naturally reads left-to-right, and having production next to local with staging in between creates a confusing comparison layout. Drag-and-drop column reordering with persistence per project would let users arrange environments in their preferred comparison order, making the matrix instantly scannable for the most common drift pattern: "what's different between my local and production?"
+- **Acceptance criteria:**
+  - Environment columns in the comparison matrix reorderable via drag-and-drop on column headers
+  - Column order persisted per project in localStorage alongside existing project data
+  - Default order: load order (current behaviour preserved for users who don't customise)
+  - "Reset order" action available to restore default ordering
+  - Column reordering does not affect any functional behaviour (filtering, patching, value copying)
+  - Reorder state preserved when env files are reloaded (matched by file name, not position)
+
+### [Feature] Add env drift resolution summary export generating Markdown changelogs for team communication
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** pending
+- **Description:** After resolving drift across environments — patching missing keys, syncing values, updating stale configuration — there is no structured way to communicate what changed to teammates or include the changes in a commit message or PR description. The change history feature (completed) records per-key modifications, and the .env.example generator (completed) documents the expected variable set, but neither produces a shareable summary of a drift resolution session. A "Copy resolution summary" action generating a Markdown table showing which keys were added, changed, or synced across which environments — with before/after values for non-secret keys — would integrate Drift's output into team communication workflows (Slack messages, PR descriptions, commit messages, deployment notes).
+- **Acceptance criteria:**
+  - "Copy summary" action available from the comparison matrix toolbar after any patch or upsert operation
+  - Summary includes: keys added (with target environment), keys changed (with before/after values), environments affected
+  - Secret values (detected by the existing secret detection feature, completed) masked in the summary output
+  - Summary formatted as GitHub-flavoured Markdown (table + bullet list sections)
+  - Copy-to-clipboard and save-to-file options
+  - Summary scope: current session's changes only (since last app launch or manual reset)
+
+### [Quality] Add git-tracked .env change detection warning when env files have uncommitted modifications
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** pending
+- **Description:** When Drift patches env files (appending missing keys or upserting values), the resulting changes may not be committed to version control — especially for `.env.example` files that are tracked by git. Developers using Drift to resolve drift may fix the configuration issue but forget to commit the change, leaving a gap between the repository state and the running environment that persists across machine resets or fresh clones. The file watcher (completed) detects external changes, and the change history (completed) records value modifications, but neither checks version control status. A subtle "uncommitted changes" indicator on env files that differ from their last git-committed state would remind developers to commit configuration alongside code, reducing a common source of deployment drift.
+- **Acceptance criteria:**
+  - Env files that differ from their git-committed version display an "uncommitted" indicator in the comparison matrix header
+  - Git status checked via `git diff --name-only` against the project root (existing registered path)
+  - Indicator shown only for files that are tracked by git (untracked files like `.env` itself are excluded by convention)
+  - Status check runs on env file load and after any Drift write operation (append, upsert)
+  - No blocking behaviour — indicator is advisory only, displayed as a subtle badge on the file column header
+  - Git check adds < 200ms to file load time (single shell command per project)
+
+### [UX/UI] Add environment file drag-and-drop import for temporary comparison against external .env files
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** pending
+- **Description:** When debugging environment issues with a colleague, developers frequently receive .env files via Slack, email, or airdrop that they need to compare against their project's environment configurations. Currently, the received file must be saved into the project directory and scanned alongside the existing env files — polluting the project structure with a temporary file that must be cleaned up afterwards. Supporting drag-and-drop of an external .env file onto the comparison matrix as a temporary, non-persisted column would streamline ad-hoc comparison without modifying the project's file structure, matching the transient investigation workflow that real-world debugging demands.
+- **Acceptance criteria:**
+  - Drag-and-drop of a .env file onto the comparison matrix adds it as a temporary column with a distinct "imported" visual style
+  - Temporary columns clearly labelled with the source filename and a "remove" action
+  - Temporary env sets parsed using the existing parser (inheriting syntax validation, comment extraction, and secret detection)
+  - Temporary columns participate in all comparison features: drift detection, value copying, grouping, filtering
+  - Temporary columns not persisted — removed on app restart or when explicitly dismissed
+  - Multiple temporary columns supported for comparing several external files simultaneously
 
 ## Design System Adoption
 
@@ -246,7 +413,8 @@ These items implement the @stuntrocket/ui design system to achieve premium visua
 - **Priority:** P1 (critical)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-25
 - **Description:** Drift uses Vue 3 + Tailwind CSS 4 with its own dark glassmorphic design system. Adopting @stuntrocket/ui requires installing it from the local Verdaccio registry, replacing the existing @theme tokens with @stuntrocket/ui shared tokens, and switching from a dark-only design to a full light/dark mode system. The existing design has some overlap with @stuntrocket/ui (glassmorphism, blur effects) but the colour palette, typography (Poppins), and spacing scale need alignment.
 - **Acceptance criteria:**
   - .npmrc configured with @stuntrocket:registry=http://localhost:4873
@@ -293,6 +461,13 @@ These items implement the @stuntrocket/ui design system to achieve premium visua
   - Visual side-by-side comparison with @stuntrocket/ui reference app passes review
 
 ## Archived
+
+### [UX/UI] Add comparison matrix row pinning for keeping critical variables visible during scrolling
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Archived:** 2026-03-24
+- **Reason:** Low-impact UI convenience for a specific edge case (scrolling through 50+ variable lists). The service prefix grouping (completed) already provides structural organisation that reduces scrolling, and the filter/search infrastructure allows focusing on specific variables. Row pinning adds sticky positioning complexity without proportional benefit for the typical .env file size (20-40 variables). Revisit if users report friction with very large env files after grouping is in active use.
 
 ### [Distribution] Add portable project profile export for team env configuration sharing
 - **Priority:** P3 (nice-to-have)
