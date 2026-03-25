@@ -7,7 +7,7 @@
 - Items attempted but failed: none
 - Branch: feature/design-tokens-v2
 - Tests passing: yes (cargo check clean, cargo clippy clean, vue-tsc clean, vite build clean)
-- Build status: pending
+- Build status: success (Drift.app + DMG bundled, copied to ~/Desktop/TauriBuilds/drift/Drift-2026-03-25.app)
 - Notes: Most changes were already present as uncommitted work from a prior incomplete integration cycle. Key fixes this session: switching from `file:` to registry dependency (the `file:` reference was creating symlinks that broke vite build due to unresolved `vue-router` imports from the local stuntrocket-ui path), deleting stale `package-lock.json` to clear cached resolution, and adding the `@source` directive for Tailwind class scanning.
 
 ## Cycle: 2026-03-20 16:00
