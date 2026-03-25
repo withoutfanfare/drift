@@ -5,6 +5,7 @@
 @import "@stuntrocket/ui/ambient.css";
 @import "@stuntrocket/ui/style.css";
 @source "../";
+@source "../../node_modules/@stuntrocket/ui";
 
 /* ── Drift-specific tokens ──
    Extend the library only where Drift needs values it doesn't provide.
@@ -12,18 +13,33 @@
    with opacity modifiers for all standard UI patterns. */
 @theme {
   /* Deeper base surface for focus rings and ambient contrast */
-  --color-surface-base: #0e0e0e;
+  --color-surface-base: #e8e8e8;
+
+  /* Glass card surface (light mode) */
+  --color-glass-surface: rgba(255, 255, 255, 0.42);
+  --color-glass-border: rgba(0, 0, 0, 0.06);
+  --color-glass-highlight: rgba(255, 255, 255, 0.6);
 
   /* Text tier below the library's tertiary */
-  --color-text-muted: #525252;
+  --color-text-muted: #a3a3a3;
 
   /* Accent border for highlighted sections */
-  --color-border-accent: #60a5fa33;
+  --color-border-accent: #2563eb33;
 
   /* Animations */
   --animate-fade-in: fade-in 400ms ease-out both;
   --animate-content-fade-in: content-fade-in 500ms ease-out both;
   --animate-scale-in: scale-in 300ms ease-out both;
+}
+
+/* Dark overrides for Drift-specific tokens */
+.dark {
+  --color-surface-base: #0e0e0e;
+  --color-glass-surface: rgba(14, 14, 14, 0.42);
+  --color-glass-border: rgba(255, 255, 255, 0.04);
+  --color-glass-highlight: rgba(255, 255, 255, 0.04);
+  --color-text-muted: #525252;
+  --color-border-accent: #60a5fa33;
 }
 
 /* ── Keyframes ── */
@@ -45,12 +61,12 @@
 /* ── Glass card utility ──
    Mirrors the library's .card-glass but with Drift's shadow treatment */
 .glass-card {
-  background: color-mix(in srgb, #0e0e0e 42%, transparent);
+  background: var(--color-glass-surface);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid color-mix(in srgb, white 4%, transparent);
+  border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-xl, 12px);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+  box-shadow: inset 0 1px 0 var(--color-glass-highlight);
 }
 
 /* ── Focus ring utility ── */

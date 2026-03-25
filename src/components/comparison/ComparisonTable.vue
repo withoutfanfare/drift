@@ -74,7 +74,7 @@ function getWarningsForKey(key: string): DriftWarning[] {
   <div class="mt-4 max-h-[60vh] overflow-auto rounded-[var(--radius-lg)] border border-border/60">
     <table class="w-full min-w-[760px] text-sm border-collapse">
       <thead>
-        <tr class="bg-surface-secondary/80 sticky top-0 z-10 shadow-[0_1px_0_0_rgba(255,255,255,0.06)]">
+        <tr class="bg-surface-secondary/80 sticky top-0 z-10 shadow-[0_1px_0_0_var(--color-border)]">
           <th class="px-3 py-2 text-left text-xs font-medium text-text-tertiary">Key</th>
           <th class="px-3 py-2 text-left text-xs font-medium text-text-tertiary">Status</th>
           <th
