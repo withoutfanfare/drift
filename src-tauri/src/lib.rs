@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -894,6 +895,426 @@ fn write_env_example(
     Ok(target.to_string_lossy().to_string())
 }
 
+// ──────────────────────────────────────────────────────────────
+// Feature: .env schema definition file support
+// ──────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct SchemaVariable {
+    #[serde(rename = "type")]
+    var_type: Option<String>,
+    required: Option<bool>,
+    #[serde(rename = "enum")]
+    allowed_values: Option<Vec<String>>,
+    pattern: Option<String>,
+    description: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SchemaValidationIssue {
+    key: String,
+    message: String,
+    severity: String,
+    rule: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EnvSchemaResult {
+    variables: HashMap<String, SchemaVariable>,
+    validation_issues: Vec<SchemaValidationIssue>,
+}
+
+/// Read and parse a .env.schema.json file from the project root.
+/// If the schema file does not exist, return an empty result (not an error).
+#[tauri::command]
+fn read_env_schema(project_root: String) -> Result<EnvSchemaResult, String> {
+    let root = PathBuf::from(project_root.trim());
+    let schema_path = root.join(".env.schema.json");
+
+    if !schema_path.exists() || !schema_path.is_file() {
+        return Ok(EnvSchemaResult {
+            variables: HashMap::new(),
+            validation_issues: Vec::new(),
+        });
+    }
+
+    let content = fs::read_to_string(&schema_path)
+        .map_err(|e| format!("Failed to read .env.schema.json: {}", e))?;
+
+    let variables: HashMap<String, SchemaVariable> = serde_json::from_str(&content)
+        .map_err(|e| format!("Invalid .env.schema.json format: {}", e))?;
+
+    Ok(EnvSchemaResult {
+        variables,
+        validation_issues: Vec::new(),
+    })
+}
+
+/// Validate env values against a schema definition.
+#[tauri::command]
+fn validate_env_against_schema(
+    values: HashMap<String, String>,
+    schema: HashMap<String, SchemaVariable>,
+) -> Result<Vec<SchemaValidationIssue>, String> {
+    let mut issues = Vec::new();
+
+    for (key, def) in &schema {
+        let value = values.get(key);
+
+        // Check required
+        if def.required.unwrap_or(false) {
+            match value {
+                None => {
+                    issues.push(SchemaValidationIssue {
+                        key: key.clone(),
+                        message: format!("{} is required but missing", key),
+                        severity: "error".to_string(),
+                        rule: "required".to_string(),
+                    });
+                    continue;
+                }
+                Some(v) if v.is_empty() => {
+                    issues.push(SchemaValidationIssue {
+                        key: key.clone(),
+                        message: format!("{} is required but empty", key),
+                        severity: "error".to_string(),
+                        rule: "required".to_string(),
+                    });
+                    continue;
+                }
+                _ => {}
+            }
+        }
+
+        let Some(val) = value else { continue };
+        if val.is_empty() {
+            continue;
+        }
+
+        // Check type
+        if let Some(ref var_type) = def.var_type {
+            let type_ok = match var_type.as_str() {
+                "integer" => val.parse::<i64>().is_ok(),
+                "boolean" => matches!(
+                    val.to_lowercase().as_str(),
+                    "true" | "false" | "1" | "0" | "yes" | "no" | "on" | "off"
+                ),
+                "url" => val.starts_with("http://") || val.starts_with("https://"),
+                "email" => val.contains('@') && val.contains('.'),
+                "string" => true,
+                _ => true,
+            };
+
+            if !type_ok {
+                issues.push(SchemaValidationIssue {
+                    key: key.clone(),
+                    message: format!("{} should be of type '{}', got '{}'", key, var_type, val),
+                    severity: "warning".to_string(),
+                    rule: "type".to_string(),
+                });
+            }
+        }
+
+        // Check enum
+        if let Some(ref allowed) = def.allowed_values {
+            if !allowed.iter().any(|a| a == val) {
+                issues.push(SchemaValidationIssue {
+                    key: key.clone(),
+                    message: format!(
+                        "{} has value '{}' which is not in allowed values: [{}]",
+                        key,
+                        val,
+                        allowed.join(", ")
+                    ),
+                    severity: "warning".to_string(),
+                    rule: "enum".to_string(),
+                });
+            }
+        }
+
+        // Check pattern
+        if let Some(ref pattern) = def.pattern {
+            // Simple regex-like matching using contains for safety
+            // Full regex would require the regex crate
+            let pattern_matches = if pattern.starts_with('^') && pattern.ends_with('$') {
+                // Exact match patterns — strip anchors and compare
+                let inner = &pattern[1..pattern.len() - 1];
+                val == inner
+            } else {
+                val.contains(pattern.as_str())
+            };
+
+            if !pattern_matches {
+                issues.push(SchemaValidationIssue {
+                    key: key.clone(),
+                    message: format!("{} does not match pattern '{}'", key, pattern),
+                    severity: "warning".to_string(),
+                    rule: "pattern".to_string(),
+                });
+            }
+        }
+    }
+
+    // Sort issues: errors first, then warnings
+    issues.sort_by(|a, b| {
+        let a_priority = if a.severity == "error" { 0 } else { 1 };
+        let b_priority = if b.severity == "error" { 0 } else { 1 };
+        a_priority.cmp(&b_priority).then(a.key.cmp(&b.key))
+    });
+
+    Ok(issues)
+}
+
+/// Generate a schema definition from the current env values (type inference).
+#[tauri::command]
+fn generate_env_schema(
+    values: HashMap<String, String>,
+) -> Result<String, String> {
+    let mut schema: HashMap<String, SchemaVariable> = HashMap::new();
+
+    for (key, val) in &values {
+        let inferred_type = if val.parse::<i64>().is_ok() {
+            "integer"
+        } else if matches!(
+            val.to_lowercase().as_str(),
+            "true" | "false" | "1" | "0" | "yes" | "no" | "on" | "off"
+        ) {
+            "boolean"
+        } else if val.starts_with("http://") || val.starts_with("https://") {
+            "url"
+        } else if val.contains('@') && val.contains('.') && !val.contains(' ') {
+            "email"
+        } else {
+            "string"
+        };
+
+        schema.insert(
+            key.clone(),
+            SchemaVariable {
+                var_type: Some(inferred_type.to_string()),
+                required: Some(!val.is_empty()),
+                allowed_values: None,
+                pattern: None,
+                description: None,
+            },
+        );
+    }
+
+    serde_json::to_string_pretty(&schema)
+        .map_err(|e| format!("Failed to serialise schema: {}", e))
+}
+
+/// Write a generated schema to .env.schema.json in the project root.
+#[tauri::command]
+fn write_env_schema(
+    project_root: String,
+    content: String,
+) -> Result<String, String> {
+    let root = PathBuf::from(project_root.trim());
+    if !root.exists() || !root.is_dir() {
+        return Err("Project root does not exist or is not a directory".to_string());
+    }
+
+    let target = root.join(".env.schema.json");
+    atomic_write(&target, &content)?;
+    Ok(target.to_string_lossy().to_string())
+}
+
+// ──────────────────────────────────────────────────────────────
+// Feature: Git-tracked .env change detection
+// ──────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GitEnvStatus {
+    file_path: String,
+    relative_path: String,
+    is_tracked: bool,
+    has_uncommitted_changes: bool,
+}
+
+/// Check git status for env files in a project, reporting which tracked files
+/// have uncommitted modifications.
+#[tauri::command]
+fn check_env_git_status(project_root: String) -> Result<Vec<GitEnvStatus>, String> {
+    let root = PathBuf::from(project_root.trim());
+    if !root.exists() || !root.is_dir() {
+        return Err("Project root does not exist or is not a directory".to_string());
+    }
+
+    // Check if this is a git repository
+    let git_dir = root.join(".git");
+    if !git_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    // Get list of modified files (both staged and unstaged) using git diff
+    let output = Command::new("git")
+        .args(["diff", "--name-only", "HEAD"])
+        .current_dir(&root)
+        .output()
+        .map_err(|e| format!("Failed to run git diff: {}", e))?;
+
+    let modified_files: HashSet<String> = if output.status.success() {
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .map(|l| l.to_string())
+            .collect()
+    } else {
+        HashSet::new()
+    };
+
+    // Also check for staged changes
+    let staged_output = Command::new("git")
+        .args(["diff", "--name-only", "--cached"])
+        .current_dir(&root)
+        .output()
+        .map_err(|e| format!("Failed to run git diff --cached: {}", e))?;
+
+    let staged_files: HashSet<String> = if staged_output.status.success() {
+        String::from_utf8_lossy(&staged_output.stdout)
+            .lines()
+            .map(|l| l.to_string())
+            .collect()
+    } else {
+        HashSet::new()
+    };
+
+    // Get list of tracked files
+    let tracked_output = Command::new("git")
+        .args(["ls-files"])
+        .current_dir(&root)
+        .output()
+        .map_err(|e| format!("Failed to run git ls-files: {}", e))?;
+
+    let tracked_files: HashSet<String> = if tracked_output.status.success() {
+        String::from_utf8_lossy(&tracked_output.stdout)
+            .lines()
+            .map(|l| l.to_string())
+            .collect()
+    } else {
+        HashSet::new()
+    };
+
+    // Find env files that are tracked by git
+    let mut results = Vec::new();
+    for tracked in &tracked_files {
+        let file_name = Path::new(tracked)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
+
+        if !is_env_file(file_name) {
+            continue;
+        }
+
+        let full_path = root.join(tracked);
+        if !full_path.exists() {
+            continue;
+        }
+
+        let has_changes = modified_files.contains(tracked) || staged_files.contains(tracked);
+
+        results.push(GitEnvStatus {
+            file_path: full_path.to_string_lossy().to_string(),
+            relative_path: tracked.clone(),
+            is_tracked: true,
+            has_uncommitted_changes: has_changes,
+        });
+    }
+
+    Ok(results)
+}
+
+// ──────────────────────────────────────────────────────────────
+// Feature: Multi-project env file caching (mtime check)
+// ──────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FileMtimeEntry {
+    path: String,
+    mtime: u64,
+    size: u64,
+}
+
+/// Get modification times for all env files in a project for cache validation.
+#[tauri::command]
+fn get_env_file_mtimes(project_root: String) -> Result<Vec<FileMtimeEntry>, String> {
+    let root = PathBuf::from(project_root.trim());
+    if !root.exists() || !root.is_dir() {
+        return Err("Project root does not exist or is not a directory".to_string());
+    }
+
+    let mut entries = Vec::new();
+    collect_env_mtimes(&root, &root, &mut entries, 0);
+    Ok(entries)
+}
+
+fn collect_env_mtimes(
+    current: &Path,
+    _root: &Path,
+    entries: &mut Vec<FileMtimeEntry>,
+    depth: usize,
+) {
+    if depth > 8 {
+        return;
+    }
+
+    let Ok(dir_entries) = fs::read_dir(current) else {
+        return;
+    };
+
+    for entry in dir_entries.flatten() {
+        let path = entry.path();
+        let file_type = match entry.file_type() {
+            Ok(ft) => ft,
+            Err(_) => continue,
+        };
+
+        if file_type.is_symlink() {
+            continue;
+        }
+
+        let file_name = match path.file_name().and_then(|n| n.to_str()) {
+            Some(n) => n.to_string(),
+            None => continue,
+        };
+
+        if file_type.is_dir() {
+            if should_skip_dir(&file_name) {
+                continue;
+            }
+            collect_env_mtimes(&path, _root, entries, depth + 1);
+            continue;
+        }
+
+        if !file_type.is_file() || !is_env_file(&file_name) {
+            continue;
+        }
+
+        let Ok(metadata) = fs::metadata(&path) else {
+            continue;
+        };
+
+        let mtime = metadata
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        entries.push(FileMtimeEntry {
+            path: path.to_string_lossy().to_string(),
+            mtime,
+            size: metadata.len(),
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1187,7 +1608,13 @@ pub fn run() {
             list_project_backups,
             rotate_backups,
             get_file_mtime,
-            write_env_example
+            write_env_example,
+            read_env_schema,
+            validate_env_against_schema,
+            generate_env_schema,
+            write_env_schema,
+            check_env_git_status,
+            get_env_file_mtimes
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

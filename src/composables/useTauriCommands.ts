@@ -9,6 +9,11 @@ import type {
   ProjectBackupResult,
   BackupEntry,
   BackupRotationResult,
+  EnvSchemaResult,
+  SchemaVariable,
+  SchemaValidationIssue,
+  GitEnvStatus,
+  FileMtimeEntry,
 } from "../types";
 
 export function scanEnvFiles(projectRoot: string): Promise<ScannedEnvFile[]> {
@@ -100,4 +105,49 @@ export function writeEnvExample(
   content: string,
 ): Promise<string> {
   return invoke<string>("write_env_example", { projectRoot, content });
+}
+
+// Schema validation commands
+
+export function readEnvSchema(projectRoot: string): Promise<EnvSchemaResult> {
+  return invoke<EnvSchemaResult>("read_env_schema", { projectRoot });
+}
+
+export function validateEnvAgainstSchema(
+  values: Record<string, string>,
+  schema: Record<string, SchemaVariable>,
+): Promise<SchemaValidationIssue[]> {
+  return invoke<SchemaValidationIssue[]>("validate_env_against_schema", {
+    values,
+    schema,
+  });
+}
+
+export function generateEnvSchema(
+  values: Record<string, string>,
+): Promise<string> {
+  return invoke<string>("generate_env_schema", { values });
+}
+
+export function writeEnvSchema(
+  projectRoot: string,
+  content: string,
+): Promise<string> {
+  return invoke<string>("write_env_schema", { projectRoot, content });
+}
+
+// Git status commands
+
+export function checkEnvGitStatus(
+  projectRoot: string,
+): Promise<GitEnvStatus[]> {
+  return invoke<GitEnvStatus[]>("check_env_git_status", { projectRoot });
+}
+
+// Cache validation commands
+
+export function getEnvFileMtimes(
+  projectRoot: string,
+): Promise<FileMtimeEntry[]> {
+  return invoke<FileMtimeEntry[]>("get_env_file_mtimes", { projectRoot });
 }
