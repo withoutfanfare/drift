@@ -9,6 +9,8 @@ import { useChangeHistory } from "../../composables/useChangeHistory";
 import { useGrouping } from "../../composables/useGrouping";
 import { useDriftAnalysis } from "../../composables/useDriftAnalysis";
 import { useEnvExample } from "../../composables/useEnvExample";
+import { useEnvSchema } from "../../composables/useEnvSchema";
+import { useGitTracking } from "../../composables/useGitTracking";
 import { useKeyboardShortcuts } from "../../composables/useKeyboardShortcuts";
 import { useDebouncedComputed } from "../../composables/useDebounce";
 import { upsertEnvKeyInRaw } from "../../composables/useEnvMutations";
@@ -36,8 +38,13 @@ const { recordChange } = useChangeHistory();
 const { groupingEnabled, toggleGrouping, groupRows } = useGrouping();
 const { analyseValueDrift } = useDriftAnalysis();
 const { generateEnvExample } = useEnvExample();
+const { hasSchema, schemaIssues, schemaErrorCount, schemaWarningCount, loadSchema, validateValues, generateSchema } = useEnvSchema();
+const { uncommittedCount, hasUncommittedChanges, checkGitStatus, isFileUncommitted } = useGitTracking();
 
 const { activeProject, activeProjectId } = useProjects();
+
+const showSchemaIssues = ref(false);
+const showGitWarnings = ref(false);
 
 const filter = ref("all");
 const search = ref("");
@@ -85,6 +92,37 @@ watch(activeProjectId, () => {
   targetSetId.value = "";
   sessionEdits.value = new Map();
   focusedRowIndex.value = -1;
+  showSchemaIssues.value = false;
+  showGitWarnings.value = false;
+  loadSchema();
+  checkGitStatus();
+});
+
+// Load schema and check git on mount
+loadSchema();
+checkGitStatus();
+
+// Re-validate schema when sets change
+watch(
+  () => props.sets,
+  (sets) => {
+    if (!hasSchema.value || sets.length === 0) return;
+    const allValues: Record<string, string> = {};
+    for (const s of sets) {
+      for (const [k, v] of Object.entries(s.values)) {
+        if (!(k in allValues)) allValues[k] = v;
+      }
+    }
+    validateValues(allValues);
+  },
+  { immediate: true },
+);
+
+// Re-check git after file save
+watch(savingSetId, (val, oldVal) => {
+  if (oldVal !== null && val === null) {
+    checkGitStatus();
+  }
 });
 
 // Smart defaults: compare-from = most keys, compare-to = local env
@@ -392,6 +430,24 @@ function onRevertMemory(targetId: string, key: string) {
   log("info", `Reverted ${key} in ${target.name}`);
 }
 
+async function onGenerateSchema() {
+  if (props.sets.length === 0) return;
+  // Merge all values for schema inference
+  const allValues: Record<string, string> = {};
+  for (const s of props.sets) {
+    for (const [k, v] of Object.entries(s.values)) {
+      if (!(k in allValues)) allValues[k] = v;
+    }
+  }
+  const result = await generateSchema(allValues);
+  if (result) {
+    setStatus("Generated .env.schema.json from current env values.");
+    log("write", "Generated .env.schema.json");
+  } else {
+    setStatus("Failed to generate schema.");
+  }
+}
+
 async function onCopyValueToClipboard(value: string) {
   try {
     await navigator.clipboard.writeText(value);
@@ -458,6 +514,7 @@ async function onSaveFile(setId: string) {
         <SButton variant="primary" size="sm" @click="onCopyMissing">Copy missing</SButton>
         <SButton variant="secondary" size="sm" @click="onCopyMerged">Export .env</SButton>
         <SButton variant="secondary" size="sm" @click="onGenerateEnvExample">.env.example</SButton>
+        <SButton v-if="!hasSchema" variant="secondary" size="sm" @click="onGenerateSchema" title="Generate .env.schema.json from current values">Schema</SButton>
         <SButton
           variant="secondary"
           size="sm"
@@ -500,6 +557,58 @@ async function onSaveFile(setId: string) {
         </svg>
         {{ driftWarnings.length }} drift {{ driftWarnings.length === 1 ? 'suggestion' : 'suggestions' }}
       </button>
+
+      <button
+        v-if="schemaIssues.length > 0"
+        class="focus-ring inline-flex items-center gap-1 rounded-[var(--radius-md)] px-2 py-0.5 text-[11px] font-medium transition-colors"
+        :class="showSchemaIssues
+          ? (schemaErrorCount > 0 ? 'bg-red-500/15 text-red-400' : 'bg-warning/15 text-warning')
+          : (schemaErrorCount > 0 ? 'bg-red-500/5 text-red-400/60 hover:text-red-400' : 'bg-warning/5 text-warning/60 hover:text-warning')"
+        @click="showSchemaIssues = !showSchemaIssues"
+      >
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 12c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        {{ schemaErrorCount > 0 ? `${schemaErrorCount} schema error${schemaErrorCount === 1 ? '' : 's'}` : '' }}
+        {{ schemaErrorCount > 0 && schemaWarningCount > 0 ? ', ' : '' }}
+        {{ schemaWarningCount > 0 ? `${schemaWarningCount} schema warning${schemaWarningCount === 1 ? '' : 's'}` : '' }}
+      </button>
+
+      <button
+        v-if="hasSchema && schemaIssues.length === 0"
+        class="focus-ring inline-flex items-center gap-1 rounded-[var(--radius-md)] px-2 py-0.5 text-[11px] font-medium bg-green-500/5 text-green-400/60"
+        disabled
+      >
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Schema valid
+      </button>
+
+      <span
+        v-if="!hasSchema"
+        class="inline-flex items-center gap-1 rounded-[var(--radius-md)] px-2 py-0.5 text-[11px] font-medium text-text-muted/40 cursor-pointer hover:text-text-muted/60"
+        title="Generate .env.schema.json from current env values"
+        @click="onGenerateSchema"
+      >
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 4v16m8-8H4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Schema
+      </span>
+
+      <button
+        v-if="hasUncommittedChanges"
+        class="focus-ring inline-flex items-center gap-1 rounded-[var(--radius-md)] px-2 py-0.5 text-[11px] font-medium transition-colors"
+        :class="showGitWarnings ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-500/5 text-amber-400/60 hover:text-amber-400'"
+        @click="showGitWarnings = !showGitWarnings"
+      >
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M12 2v6m0 8v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        {{ uncommittedCount }} uncommitted
+      </button>
     </div>
 
     <!-- Validation warnings panel -->
@@ -508,6 +617,55 @@ async function onSaveFile(setId: string) {
       :sets="sets"
       @dismiss="showValidation = false"
     />
+
+    <!-- Schema validation issues panel -->
+    <div
+      v-if="showSchemaIssues && schemaIssues.length > 0"
+      class="mb-3 rounded-[var(--radius-md)] border border-warning/20 bg-warning/5 p-3"
+    >
+      <div class="flex items-center justify-between mb-2">
+        <h4 class="text-xs font-semibold text-warning">Schema Validation Issues</h4>
+        <button class="text-[11px] text-text-muted hover:text-text-secondary" @click="showSchemaIssues = false">Dismiss</button>
+      </div>
+      <ul class="space-y-1">
+        <li
+          v-for="(issue, i) in schemaIssues"
+          :key="i"
+          class="flex items-start gap-2 text-[11px]"
+        >
+          <span
+            class="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+            :class="issue.severity === 'error' ? 'bg-red-400' : 'bg-warning'"
+          />
+          <span class="text-text-secondary">
+            <code class="font-mono text-text-primary">{{ issue.key }}</code>
+            — {{ issue.message }}
+          </span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Git uncommitted changes panel -->
+    <div
+      v-if="showGitWarnings && hasUncommittedChanges"
+      class="mb-3 rounded-[var(--radius-md)] border border-amber-500/20 bg-amber-500/5 p-3"
+    >
+      <div class="flex items-center justify-between mb-2">
+        <h4 class="text-xs font-semibold text-amber-400">Uncommitted Changes</h4>
+        <button class="text-[11px] text-text-muted hover:text-text-secondary" @click="showGitWarnings = false">Dismiss</button>
+      </div>
+      <p class="text-[11px] text-text-muted mb-1">These tracked env files have changes not yet committed to git:</p>
+      <ul class="space-y-0.5">
+        <li
+          v-for="s in sets.filter(s => s.filePath && isFileUncommitted(s.filePath))"
+          :key="s.id"
+          class="flex items-center gap-2 text-[11px]"
+        >
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
+          <span class="font-mono text-text-secondary">{{ s.name }}</span>
+        </li>
+      </ul>
+    </div>
 
     <!-- Cross-environment drift warnings panel -->
     <DriftWarningsPanel

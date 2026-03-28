@@ -178,3 +178,41 @@ export interface FileChangeEvent {
   path: string;
   kind: "modified" | "created" | "removed";
 }
+
+/** Schema variable definition from .env.schema.json */
+export interface SchemaVariable {
+  type?: string;
+  required?: boolean;
+  enum?: string[];
+  pattern?: string;
+  description?: string;
+}
+
+/** Schema validation issue found when checking env values against schema */
+export interface SchemaValidationIssue {
+  key: string;
+  message: string;
+  severity: "error" | "warning";
+  rule: string;
+}
+
+/** Result from reading the env schema file */
+export interface EnvSchemaResult {
+  variables: Record<string, SchemaVariable>;
+  validationIssues: SchemaValidationIssue[];
+}
+
+/** Git status for a tracked env file */
+export interface GitEnvStatus {
+  filePath: string;
+  relativePath: string;
+  isTracked: boolean;
+  hasUncommittedChanges: boolean;
+}
+
+/** File mtime entry for cache validation */
+export interface FileMtimeEntry {
+  path: string;
+  mtime: number;
+  size: number;
+}
