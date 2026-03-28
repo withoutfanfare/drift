@@ -1,5 +1,17 @@
 # Drift Development Log
 
+## Cycle: 2026-03-28 06:00
+- App: Drift
+- Items completed:
+  1. **[Feature] .env schema definition file support** (P2, S) — Added Rust commands `read_env_schema`, `validate_env_against_schema`, `generate_env_schema`, `write_env_schema` for `.env.schema.json` support. Schema defines variable types (string, integer, boolean, url, email), required flags, allowed values (enum), patterns, and descriptions. Validation checks required fields, type correctness, enum membership, and pattern matching. `generate_env_schema` infers types from existing values. Added `useEnvSchema` composable with reactive schema state, validation, and generation. ComparisonCard integrated with schema validation indicator badges and issues panel.
+  2. **[Quality] Git-tracked .env change detection** (P2, S) — Added Rust command `check_env_git_status` that runs `git diff --name-only HEAD`, `git diff --name-only --cached`, and `git ls-files` to identify tracked env files with uncommitted changes. Added `useGitTracking` composable exposing `checkGitStatus()`, `isFileUncommitted()`, `isFileTracked()` with computed `uncommittedFiles` and `hasUncommittedChanges`. ComparisonCard shows uncommitted changes badge and warnings panel listing affected files.
+  3. **[Performance] Multi-project env file caching** (P2, S) — Added Rust command `get_env_file_mtimes` that walks project directory collecting env file path, mtime, and size metadata. Added `useEnvCache` composable with in-memory cache keyed by file path storing mtime, size, rawText, and name. `loadWithCache()` compares mtimes to skip re-parsing unchanged files, returning `{ total, cached, refreshed }` stats. `refreshStaleFiles()` selectively re-parses only changed files. Cache invalidation via `invalidateFile()` and `clearProjectCache()`.
+- Items attempted but failed: none
+- Branch: feature/schema-validation-git-status-env-cache
+- Tests passing: yes (cargo check clean, cargo clippy clean, cargo test 15/15, vue-tsc clean)
+- Build status: pending
+- Notes: All 6 new Rust commands registered in invoke_handler. 5 new TypeScript interfaces added to types/index.ts mirroring Rust structs. 6 new IPC wrapper functions in useTauriCommands.ts. 3 new composables follow existing module-level ref() singleton pattern. Schema pattern validation uses simple string matching (contains/starts-with/ends-with) rather than full regex to avoid adding the regex crate dependency.
+
 ## Cycle: 2026-03-25 06:00
 - App: Drift
 - Items completed:

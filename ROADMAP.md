@@ -234,6 +234,51 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Secret detection rules configurable (enable/disable individual patterns)
   - Detection runs client-side only (no values sent to external services)
 
+### [Feature] Add .env schema definition file support with type validation and required variable enforcement
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-23
+- **Status:** completed
+- **Completed:** 2026-03-28
+- **Description:** The .env.example generator (completed) documents which variables exist, and the secret detection (completed) flags sensitive values, but neither enforces what a valid .env file should contain. A `.env.schema.json` definition file specifying expected types (string, integer, boolean, URL, email), required variables per environment, allowed values (enumerations), and format patterns (regex) would let Drift validate an env file against its schema on load — catching misconfigurations like a non-numeric value in a port field, a missing required variable in production, or an invalid URL format before they cause runtime failures.
+- **Acceptance criteria:**
+  - Schema definition file format (`.env.schema.json`) supporting: variable name, type (string, integer, boolean, url, email), required flag, allowed values (enum), pattern (regex), description
+  - Schema validation runs on env file load when a schema file is present in the project root
+  - Validation errors shown per-variable in the comparison matrix (inline warning badges)
+  - "Generate schema" action creates a schema file from the current env file structure (types inferred from values)
+  - Schema violations filterable in the comparison matrix (show only invalid variables)
+  - Schema file format documented in a tooltip or help overlay
+
+### [Quality] Add git-tracked .env change detection warning when env files have uncommitted modifications
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** completed
+- **Completed:** 2026-03-28
+- **Description:** When Drift patches env files (appending missing keys or upserting values), the resulting changes may not be committed to version control — especially for `.env.example` files that are tracked by git. Developers using Drift to resolve drift may fix the configuration issue but forget to commit the change, leaving a gap between the repository state and the running environment that persists across machine resets or fresh clones. The file watcher (completed) detects external changes, and the change history (completed) records value modifications, but neither checks version control status. A subtle "uncommitted changes" indicator on env files that differ from their last git-committed state would remind developers to commit configuration alongside code, reducing a common source of deployment drift.
+- **Acceptance criteria:**
+  - Env files that differ from their git-committed version display an "uncommitted" indicator in the comparison matrix header
+  - Git status checked via `git diff --name-only` against the project root (existing registered path)
+  - Indicator shown only for files that are tracked by git (untracked files like `.env` itself are excluded by convention)
+  - Status check runs on env file load and after any Drift write operation (append, upsert)
+  - No blocking behaviour — indicator is advisory only, displayed as a subtle badge on the file column header
+  - Git check adds < 200ms to file load time (single shell command per project)
+
+### [Performance] Add multi-project env file caching with modification-time invalidation for instant project switching
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-23
+- **Status:** completed
+- **Completed:** 2026-03-28
+- **Description:** When switching between registered projects or refreshing the active project, Drift re-parses all `.env` files from disk even if they haven't changed since the last parse. For users managing 3-5 projects with 5+ env files each, this introduces perceptible latency on every project switch and manual refresh. Caching parsed `EnvSet` results keyed by file path and modification timestamp (`mtime`) — and invalidating only when the file's mtime changes — would make project switching and refresh effectively instantaneous for unchanged files. The existing file watcher (completed) already detects external changes; the cache invalidation can hook into the same detection path rather than requiring a separate check.
+- **Acceptance criteria:**
+  - Parsed env file results cached in memory keyed by file path and modification timestamp
+  - Cache hit returns the previously parsed EnvSet without re-reading or re-parsing the file
+  - Cache invalidated when the file watcher detects a change or when mtime differs from cached value
+  - Project switching latency reduced to under 50ms for projects with unchanged env files
+  - Cache cleared when a project is removed or when env files are added/removed
+  - No increase in memory usage beyond the size of the parsed env data (already held in reactive state)
+
 ## Pending
 
 ### [Distribution] Add Tauri auto-updater with release notes display for seamless version delivery
@@ -250,20 +295,6 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Current version and last update check timestamp visible in settings
   - Update progress indicator during download and installation
 
-### [Feature] Add .env schema definition file support with type validation and required variable enforcement
-- **Priority:** P2 (important)
-- **Size:** S (< 1hr)
-- **Added:** 2026-03-23
-- **Status:** pending
-- **Description:** The .env.example generator (completed) documents which variables exist, and the secret detection (completed) flags sensitive values, but neither enforces what a valid .env file should contain. A `.env.schema.json` definition file specifying expected types (string, integer, boolean, URL, email), required variables per environment, allowed values (enumerations), and format patterns (regex) would let Drift validate an env file against its schema on load — catching misconfigurations like a non-numeric value in a port field, a missing required variable in production, or an invalid URL format before they cause runtime failures.
-- **Acceptance criteria:**
-  - Schema definition file format (`.env.schema.json`) supporting: variable name, type (string, integer, boolean, url, email), required flag, allowed values (enum), pattern (regex), description
-  - Schema validation runs on env file load when a schema file is present in the project root
-  - Validation errors shown per-variable in the comparison matrix (inline warning badges)
-  - "Generate schema" action creates a schema file from the current env file structure (types inferred from values)
-  - Schema violations filterable in the comparison matrix (show only invalid variables)
-  - Schema file format documented in a tooltip or help overlay
-
 ### [UX/UI] Add environment variable dependency annotations showing which variables reference each other
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
@@ -277,20 +308,6 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Custom dependency groups definable in project settings (for app-specific patterns)
   - Dependency view expandable from any variable row showing all related variables in the group
   - Dependencies are advisory only — no blocking of writes to partial groups
-
-### [Performance] Add multi-project env file caching with modification-time invalidation for instant project switching
-- **Priority:** P2 (important)
-- **Size:** S (< 1hr)
-- **Added:** 2026-03-23
-- **Status:** pending
-- **Description:** When switching between registered projects or refreshing the active project, Drift re-parses all `.env` files from disk even if they haven't changed since the last parse. For users managing 3-5 projects with 5+ env files each, this introduces perceptible latency on every project switch and manual refresh. Caching parsed `EnvSet` results keyed by file path and modification timestamp (`mtime`) — and invalidating only when the file's mtime changes — would make project switching and refresh effectively instantaneous for unchanged files. The existing file watcher (completed) already detects external changes; the cache invalidation can hook into the same detection path rather than requiring a separate check.
-- **Acceptance criteria:**
-  - Parsed env file results cached in memory keyed by file path and modification timestamp
-  - Cache hit returns the previously parsed EnvSet without re-reading or re-parsing the file
-  - Cache invalidated when the file watcher detects a change or when mtime differs from cached value
-  - Project switching latency reduced to under 50ms for projects with unchanged env files
-  - Cache cleared when a project is removed or when env files are added/removed
-  - No increase in memory usage beyond the size of the parsed env data (already held in reactive state)
 
 ### [Feature] Add multi-project drift summary dashboard showing aggregate status across all registered projects
 - **Priority:** P2 (important)
@@ -376,20 +393,6 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Summary formatted as GitHub-flavoured Markdown (table + bullet list sections)
   - Copy-to-clipboard and save-to-file options
   - Summary scope: current session's changes only (since last app launch or manual reset)
-
-### [Quality] Add git-tracked .env change detection warning when env files have uncommitted modifications
-- **Priority:** P2 (important)
-- **Size:** S (< 1hr)
-- **Added:** 2026-03-24
-- **Status:** pending
-- **Description:** When Drift patches env files (appending missing keys or upserting values), the resulting changes may not be committed to version control — especially for `.env.example` files that are tracked by git. Developers using Drift to resolve drift may fix the configuration issue but forget to commit the change, leaving a gap between the repository state and the running environment that persists across machine resets or fresh clones. The file watcher (completed) detects external changes, and the change history (completed) records value modifications, but neither checks version control status. A subtle "uncommitted changes" indicator on env files that differ from their last git-committed state would remind developers to commit configuration alongside code, reducing a common source of deployment drift.
-- **Acceptance criteria:**
-  - Env files that differ from their git-committed version display an "uncommitted" indicator in the comparison matrix header
-  - Git status checked via `git diff --name-only` against the project root (existing registered path)
-  - Indicator shown only for files that are tracked by git (untracked files like `.env` itself are excluded by convention)
-  - Status check runs on env file load and after any Drift write operation (append, upsert)
-  - No blocking behaviour — indicator is advisory only, displayed as a subtle badge on the file column header
-  - Git check adds < 200ms to file load time (single shell command per project)
 
 ### [UX/UI] Add environment file drag-and-drop import for temporary comparison against external .env files
 - **Priority:** P3 (nice-to-have)
