@@ -9,8 +9,8 @@
 - Items attempted but failed: none
 - Branch: feature/schema-validation-git-status-env-cache
 - Tests passing: yes (cargo check clean, cargo clippy clean, cargo test 15/15, vue-tsc clean)
-- Build status: pending
-- Notes: All 6 new Rust commands registered in invoke_handler. 5 new TypeScript interfaces added to types/index.ts mirroring Rust structs. 6 new IPC wrapper functions in useTauriCommands.ts. 3 new composables follow existing module-level ref() singleton pattern. Schema pattern validation uses simple string matching (contains/starts-with/ends-with) rather than full regex to avoid adding the regex crate dependency.
+- Build status: success (Drift.app + DMG bundled, copied to /Applications/Drift.app and ~/Desktop/TauriBuilds/drift/Drift-2026-03-28.app)
+- Notes: All 6 new Rust commands registered in invoke_handler. Fixed @stuntrocket/ui dependency from file: to Verdaccio ^0.9.0 to resolve vite build failure (vue-router import from symlinked local path). 5 new TypeScript interfaces added to types/index.ts mirroring Rust structs. 6 new IPC wrapper functions in useTauriCommands.ts. 3 new composables follow existing module-level ref() singleton pattern. Schema pattern validation uses simple string matching (contains/starts-with/ends-with) rather than full regex to avoid adding the regex crate dependency.
 
 ## Cycle: 2026-03-25 06:00
 - App: Drift
