@@ -8,7 +8,7 @@
 - Items attempted but failed: none
 - Branch: feature/unused-detection-and-drag-import
 - Tests passing: yes (35/35 Rust tests, vue-tsc clean)
-- Build status: pending (merge to main)
+- Build status: success (deployed to /Applications/Drift.app)
 - Notes: Both items are P3 S batch. Unused detection supports PHP, JS/TS, Vue, Python, Ruby, Go, Rust source files with 500KB file size limit and 10-level depth.
 
 ## Cycle: 2026-03-29 23:30
