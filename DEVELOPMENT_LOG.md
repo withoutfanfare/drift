@@ -1,5 +1,17 @@
 # Drift Development Log
 
+## Cycle: 2026-03-29 14:00
+- App: Drift
+- Items completed:
+  1. [Feature] Multi-project drift summary dashboard (P2/S) — new Overview page accessible from sidebar navigation showing all registered projects as cards with aggregate metrics (env file count, unique keys, missing/drift/unsafe counts) and health grade badges. Uses existing reactive state from useEnvSets and useProjects composables with no additional backend commands.
+  2. [Quality] .env file format preservation (P2/S) — rewrote upsert_env_key and append_missing_env_keys in Rust to preserve inline comments, blank lines between service groups, original line endings (LF/CRLF), and variable ordering during mutations. New keys inserted into matching service groups when prefix matches. Round-trip writes are byte-identical when only values change. Added 14 new Rust tests covering format preservation.
+  3. [Innovation] Environment configuration health score (P2/S) — new useHealthScore composable computing a weighted 0-100 score from five factors: key completeness (30%), value warnings (25%), syntax validation (20%), secret masking coverage (15%), and file freshness (10%). Displayed as letter grades (A-F) on project cards in the multi-project dashboard.
+- Items attempted but failed: none
+- Branch: feature/dashboard-format-health
+- Tests passing: yes (35 Rust tests, vue-tsc clean, cargo clippy clean)
+- Build status: pending
+- Notes: All three items are P2/S features that enhance the multi-project management experience. The dashboard and health score are purely frontend (Vue composable + component), while format preservation required significant Rust backend changes with new helper functions for line ending detection, inline comment extraction, and group-aware insertion.
+
 ## Cycle: 2026-03-28 06:00
 - App: Drift
 - Items completed:
