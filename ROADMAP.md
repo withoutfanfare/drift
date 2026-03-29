@@ -339,12 +339,14 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - "Install now" and "Remind me later" options; deferred updates install on next launch
   - Current version and last update check timestamp visible in settings
   - Update progress indicator during download and installation
+- **Autonomous cycle note (2026-03-29):** Skipped — requires external infrastructure (update endpoint server, code signing key pair) that does not exist yet. The plugin installation, UI components, and update flow logic can be implemented, but cannot be verified end-to-end without the infrastructure. Recommend Danny sets up the update endpoint and signing keys first, then this item can be completed in a subsequent cycle.
 
 ### [UX/UI] Add environment variable dependency annotations showing which variables reference each other
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-23
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-29
 - **Description:** Some environment variables are logically dependent — `DATABASE_URL` is composed from `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD`; `REDIS_URL` references `REDIS_HOST` and `REDIS_PORT`; `APP_URL` affects `ASSET_URL` and `SESSION_DOMAIN`. When one variable in a dependency group changes, related variables may need updating too, but this relationship is invisible in the comparison matrix. Annotating known dependency patterns (auto-detected from common Laravel conventions and user-definable) and highlighting dependent variables when any member of a group is modified would prevent partial configuration updates that leave related variables inconsistent.
 - **Acceptance criteria:**
   - Common Laravel dependency patterns auto-detected: DATABASE_URL ↔ DB_* components, REDIS_URL ↔ REDIS_* components, APP_URL → ASSET_URL/SESSION_DOMAIN
@@ -373,7 +375,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-24
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-29
 - **Description:** The comparison matrix displays environment columns in the order env files were loaded or scanned, which may not match the logical promotion order (local → testing → staging → production) that developers use when reviewing drift. When comparing 4+ environments, column order matters for visual scanning — the eye naturally reads left-to-right, and having production next to local with staging in between creates a confusing comparison layout. Drag-and-drop column reordering with persistence per project would let users arrange environments in their preferred comparison order, making the matrix instantly scannable for the most common drift pattern: "what's different between my local and production?"
 - **Acceptance criteria:**
   - Environment columns in the comparison matrix reorderable via drag-and-drop on column headers
@@ -387,7 +390,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-24
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-29
 - **Description:** After resolving drift across environments — patching missing keys, syncing values, updating stale configuration — there is no structured way to communicate what changed to teammates or include the changes in a commit message or PR description. The change history feature (completed) records per-key modifications, and the .env.example generator (completed) documents the expected variable set, but neither produces a shareable summary of a drift resolution session. A "Copy resolution summary" action generating a Markdown table showing which keys were added, changed, or synced across which environments — with before/after values for non-secret keys — would integrate Drift's output into team communication workflows (Slack messages, PR descriptions, commit messages, deployment notes).
 - **Acceptance criteria:**
   - "Copy summary" action available from the comparison matrix toolbar after any patch or upsert operation

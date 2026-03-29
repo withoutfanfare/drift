@@ -21,10 +21,12 @@ const emit = defineEmits<{
   copyValue: [value: string];
   copyToEnv: [targetSetId: string, key: string, value: string];
   "update:focusedRowIndex": [index: number];
+  moveColumn: [fromIndex: number, toIndex: number];
 }>();
 
 const expandedKey = ref<string | null>(null);
 const collapsedGroups = ref<Set<string>>(new Set());
+const dragFromIndex = ref<number | null>(null);
 
 // Collapse expanded row when visible keys change (filter/search), not on value mutations
 watch(
@@ -68,6 +70,33 @@ function getRowsForGroup(group: VariableGroup): KeyAnalysisRow[] {
 function getWarningsForKey(key: string): DriftWarning[] {
   return props.driftWarnings.filter((w) => w.key === key);
 }
+
+function onDragStart(index: number, event: DragEvent) {
+  dragFromIndex.value = index;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(index));
+  }
+}
+
+function onDragOver(event: DragEvent) {
+  event.preventDefault();
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = "move";
+  }
+}
+
+function onDrop(toIndex: number, event: DragEvent) {
+  event.preventDefault();
+  if (dragFromIndex.value !== null && dragFromIndex.value !== toIndex) {
+    emit("moveColumn", dragFromIndex.value, toIndex);
+  }
+  dragFromIndex.value = null;
+}
+
+function onDragEnd() {
+  dragFromIndex.value = null;
+}
 </script>
 
 <template>
@@ -78,11 +107,24 @@ function getWarningsForKey(key: string): DriftWarning[] {
           <th class="px-3 py-2 text-left text-xs font-medium text-text-tertiary">Key</th>
           <th class="px-3 py-2 text-left text-xs font-medium text-text-tertiary">Status</th>
           <th
-            v-for="set in sets"
+            v-for="(set, colIndex) in sets"
             :key="set.id"
-            class="px-3 py-2 text-left text-xs font-medium text-text-tertiary"
+            class="px-3 py-2 text-left text-xs font-medium text-text-tertiary cursor-grab select-none"
+            :class="{ 'opacity-50': dragFromIndex === colIndex }"
+            draggable="true"
+            @dragstart="onDragStart(colIndex, $event)"
+            @dragover="onDragOver"
+            @drop="onDrop(colIndex, $event)"
+            @dragend="onDragEnd"
           >
-            {{ set.name }}
+            <span class="flex items-center gap-1">
+              <svg class="h-2.5 w-2.5 shrink-0 text-text-muted/40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="9" cy="6" r="1.5" fill="currentColor"/><circle cx="15" cy="6" r="1.5" fill="currentColor"/>
+                <circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/>
+                <circle cx="9" cy="18" r="1.5" fill="currentColor"/><circle cx="15" cy="18" r="1.5" fill="currentColor"/>
+              </svg>
+              {{ set.name }}
+            </span>
           </th>
         </tr>
       </thead>
