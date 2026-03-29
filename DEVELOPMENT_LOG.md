@@ -1,5 +1,19 @@
 # Drift Development Log
 
+## Cycle: 2026-03-29 23:30
+- App: Drift
+- Items completed:
+  - [Feature] Env drift resolution summary export (P3/S) — New `useResolutionSummary` composable generates GitHub-flavoured Markdown tables from session change history, grouped by environment file, with secret values masked. "Summary" button appears in ComparisonCard toolbar after any edit operation. Copy-to-clipboard via navigator.clipboard API.
+  - [UX/UI] Comparison matrix column reordering (P3/S) — New `useColumnOrder` composable with per-project localStorage persistence (`edm.columnOrder.v1`). Drag-and-drop on column headers via native HTML5 drag events. Drag grip icon on column headers. "Reset order" button in toolbar when custom order is active. New sets appended to the end of the custom order.
+  - [UX/UI] Environment variable dependency annotations (P3/S) — New `useDependencies` composable with bidirectional dependency mapping for 13 common Laravel/infrastructure variable groups (DATABASE_URL ↔ DB_*, REDIS_URL ↔ REDIS_*, APP_URL → SESSION_DOMAIN, AWS_*, PUSHER_*, STRIPE_*, MAIL_*). Link icon on key names in summary row. Expandable "Related variables" panel in ComparisonTableRow with directional arrows distinguishing dependencies from dependents.
+- Items attempted but failed: none
+- Items skipped:
+  - [Distribution] Tauri auto-updater (P2/M) — requires external infrastructure (update endpoint, code signing) not yet available. Note added to ROADMAP.md.
+- Branch: feature/summary-export-column-reorder-dependencies
+- Tests passing: yes (cargo check clean, cargo clippy clean, vue-tsc clean)
+- Build status: pending
+- Notes: All three items are frontend-only — no Rust backend changes needed. Three new composables created: useResolutionSummary.ts, useColumnOrder.ts, useDependencies.ts. Three existing components modified: ComparisonCard.vue (summary button, column order integration, reset button), ComparisonTable.vue (draggable column headers, move-column event), ComparisonTableRow.vue (dependency annotations panel and link indicator).
+
 ## Cycle: 2026-03-29 14:00
 - App: Drift
 - Items completed:
