@@ -1,4 +1,4 @@
-export type AppPage = "dashboard" | "projects" | "help";
+export type AppPage = "dashboard" | "projects" | "overview" | "help";
 export type EnvSource = "file" | "manual" | "scan";
 export type EnvRole = "local" | "staging" | "live" | "other";
 export type RowFilter = "all" | "missing" | "drift" | "unsafe" | "aligned";

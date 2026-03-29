@@ -110,6 +110,22 @@ function onProjectClick(project: ProjectProfile) {
         </button>
         <button
           class="flex items-center w-full px-2 py-[5px] text-[13px] leading-snug tracking-[-0.01em] rounded-md transition-colors duration-100 text-left outline-none gap-2"
+          :class="page === 'overview'
+            ? 'bg-accent/8 text-accent font-medium'
+            : 'text-text-primary/75 hover:bg-surface-secondary/80 hover:text-text-primary'"
+          :aria-current="page === 'overview' ? 'page' : undefined"
+          @click="emit('navigate', 'overview')"
+        >
+          <svg class="h-3.5 w-3.5 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+            <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+            <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+            <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+          </svg>
+          Overview
+        </button>
+        <button
+          class="flex items-center w-full px-2 py-[5px] text-[13px] leading-snug tracking-[-0.01em] rounded-md transition-colors duration-100 text-left outline-none gap-2"
           :class="page === 'help'
             ? 'bg-accent/8 text-accent font-medium'
             : 'text-text-primary/75 hover:bg-surface-secondary/80 hover:text-text-primary'"

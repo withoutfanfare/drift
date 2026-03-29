@@ -279,6 +279,51 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Cache cleared when a project is removed or when env files are added/removed
   - No increase in memory usage beyond the size of the parsed env data (already held in reactive state)
 
+### [Feature] Add multi-project drift summary dashboard showing aggregate status across all registered projects
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** completed
+- **Completed:** 2026-03-29
+- **Description:** Users managing .env drift across 3-5 Laravel projects must switch between projects one at a time to check their drift status — missing keys, value warnings, stale files. There is no aggregate view showing which projects need attention. A summary dashboard displaying each registered project with key metrics (total keys, missing key count, warning count, last modified timestamp) would let developers triage their project portfolio at a glance and focus on the project with the most urgent drift, rather than checking each one sequentially. This is especially valuable for developers maintaining multiple microservices or multi-environment deployments.
+- **Acceptance criteria:**
+  - Dashboard view accessible from the main navigation showing all registered projects
+  - Per-project summary card displaying: project name, env file count, total unique keys, missing key count, drift warning count, last file modification time
+  - Projects with drift issues highlighted with warning badges (amber for missing keys, red for value warnings)
+  - Click on a project card navigates to that project's comparison matrix
+  - Dashboard data computed from cached env file state (no file re-parsing on dashboard load)
+  - "Refresh all" action re-scans all projects and updates the dashboard
+
+### [Quality] Add .env file format preservation maintaining original comment positions, blank lines, and variable ordering during patch operations
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** completed
+- **Completed:** 2026-03-29
+- **Description:** When Drift appends missing keys or upserts values, the Rust backend writes to .env files using a line-by-line approach that preserves existing key-value pairs but does not guarantee preservation of blank line separators between groups, comment positioning relative to the variables they document, or the original variable ordering within the file. The inline documentation feature (completed) parses comments for display, and the service prefix grouping (completed) organises the comparison matrix, but the write path may disrupt the careful formatting that developers maintain in their .env files — especially the blank-line separation between service groups (DB_, MAIL_, AWS_) that makes files human-scannable. Preserving the original file structure during mutations would prevent Drift from degrading the readability of the files it manages.
+- **Acceptance criteria:**
+  - Upsert operations preserve: blank lines between variable groups, comment lines above and inline with variables, original variable ordering
+  - New keys appended at the end of the file (or within the correct service group if grouping is detectable) with appropriate blank-line separation
+  - File encoding preserved (no BOM introduction or line-ending changes)
+  - Backup files (existing feature) created before any format-altering write
+  - Write output byte-identical to input for files where only values (not structure) change
+  - Round-trip test: read → write without changes → file unchanged
+
+### [Innovation] Add environment configuration health score grading each project's env hygiene at a glance
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** completed
+- **Completed:** 2026-03-29
+- **Description:** Drift surfaces individual issues — missing keys, suspicious values, stale files, syntax warnings — but there is no aggregate measure of a project's environment configuration health. Developers managing 3-5 projects need to quickly answer "which project's env config needs attention?" without opening each one. A composite health score (0-100) per project, computed from key completeness across environments, value warning count, schema compliance (if schema exists, pending), secret exposure risk, and file freshness — displayed as a grade on project cards and in the multi-project dashboard (pending) — would make env health visible at a glance and prioritise remediation effort.
+- **Acceptance criteria:**
+  - Health score (0-100) computed per project from weighted factors: key completeness (30%), value warnings (25%), syntax validation (20%), secret masking coverage (15%), file freshness (10%)
+  - Score displayed as a letter grade (A-F) and numeric value on project cards
+  - Grade breakdown viewable per project showing contribution of each factor
+  - Factors linked to existing features: completeness from key analysis, warnings from drift detection (completed), syntax from validation (completed), secrets from detection (completed)
+  - Score updates automatically when env files are loaded or refreshed
+  - Health score included in the multi-project dashboard summary cards (pending item)
+
 ## Pending
 
 ### [Distribution] Add Tauri auto-updater with release notes display for seamless version delivery
@@ -309,34 +354,6 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Dependency view expandable from any variable row showing all related variables in the group
   - Dependencies are advisory only — no blocking of writes to partial groups
 
-### [Feature] Add multi-project drift summary dashboard showing aggregate status across all registered projects
-- **Priority:** P2 (important)
-- **Size:** S (< 1hr)
-- **Added:** 2026-03-24
-- **Status:** pending
-- **Description:** Users managing .env drift across 3-5 Laravel projects must switch between projects one at a time to check their drift status — missing keys, value warnings, stale files. There is no aggregate view showing which projects need attention. A summary dashboard displaying each registered project with key metrics (total keys, missing key count, warning count, last modified timestamp) would let developers triage their project portfolio at a glance and focus on the project with the most urgent drift, rather than checking each one sequentially. This is especially valuable for developers maintaining multiple microservices or multi-environment deployments.
-- **Acceptance criteria:**
-  - Dashboard view accessible from the main navigation showing all registered projects
-  - Per-project summary card displaying: project name, env file count, total unique keys, missing key count, drift warning count, last file modification time
-  - Projects with drift issues highlighted with warning badges (amber for missing keys, red for value warnings)
-  - Click on a project card navigates to that project's comparison matrix
-  - Dashboard data computed from cached env file state (no file re-parsing on dashboard load)
-  - "Refresh all" action re-scans all projects and updates the dashboard
-
-### [Quality] Add .env file format preservation maintaining original comment positions, blank lines, and variable ordering during patch operations
-- **Priority:** P2 (important)
-- **Size:** S (< 1hr)
-- **Added:** 2026-03-24
-- **Status:** pending
-- **Description:** When Drift appends missing keys or upserts values, the Rust backend writes to .env files using a line-by-line approach that preserves existing key-value pairs but does not guarantee preservation of blank line separators between groups, comment positioning relative to the variables they document, or the original variable ordering within the file. The inline documentation feature (completed) parses comments for display, and the service prefix grouping (completed) organises the comparison matrix, but the write path may disrupt the careful formatting that developers maintain in their .env files — especially the blank-line separation between service groups (DB_, MAIL_, AWS_) that makes files human-scannable. Preserving the original file structure during mutations would prevent Drift from degrading the readability of the files it manages.
-- **Acceptance criteria:**
-  - Upsert operations preserve: blank lines between variable groups, comment lines above and inline with variables, original variable ordering
-  - New keys appended at the end of the file (or within the correct service group if grouping is detectable) with appropriate blank-line separation
-  - File encoding preserved (no BOM introduction or line-ending changes)
-  - Backup files (existing feature) created before any format-altering write
-  - Write output byte-identical to input for files where only values (not structure) change
-  - Round-trip test: read → write without changes → file unchanged
-
 ### [Quality] Add unused environment variable detection identifying keys not referenced in application source code
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
@@ -351,20 +368,6 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - Scan excludes vendor/, node_modules/, .git/ directories (matching existing env file scan exclusions)
   - Results are advisory only — no automatic deletion or modification of env files
   - Scan completes within 5 seconds for typical Laravel projects (< 5000 source files)
-
-### [Innovation] Add environment configuration health score grading each project's env hygiene at a glance
-- **Priority:** P2 (important)
-- **Size:** S (< 1hr)
-- **Added:** 2026-03-24
-- **Status:** pending
-- **Description:** Drift surfaces individual issues — missing keys, suspicious values, stale files, syntax warnings — but there is no aggregate measure of a project's environment configuration health. Developers managing 3-5 projects need to quickly answer "which project's env config needs attention?" without opening each one. A composite health score (0-100) per project, computed from key completeness across environments, value warning count, schema compliance (if schema exists, pending), secret exposure risk, and file freshness — displayed as a grade on project cards and in the multi-project dashboard (pending) — would make env health visible at a glance and prioritise remediation effort.
-- **Acceptance criteria:**
-  - Health score (0-100) computed per project from weighted factors: key completeness (30%), value warnings (25%), syntax validation (20%), secret masking coverage (15%), file freshness (10%)
-  - Score displayed as a letter grade (A-F) and numeric value on project cards
-  - Grade breakdown viewable per project showing contribution of each factor
-  - Factors linked to existing features: completeness from key analysis, warnings from drift detection (completed), syntax from validation (completed), secrets from detection (completed)
-  - Score updates automatically when env files are loaded or refreshed
-  - Health score included in the multi-project dashboard summary cards (pending item)
 
 ### [UX/UI] Add comparison matrix column reordering for custom environment priority layouts
 - **Priority:** P3 (nice-to-have)
