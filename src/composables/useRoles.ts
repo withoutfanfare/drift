@@ -41,7 +41,7 @@ export function asRole(value: string): EnvRole {
 }
 
 export function asFilter(value: string): RowFilter {
-  if (value === "missing" || value === "drift" || value === "unsafe" || value === "aligned") {
+  if (value === "missing" || value === "drift" || value === "unsafe" || value === "aligned" || value === "unused") {
     return value;
   }
   return "all";

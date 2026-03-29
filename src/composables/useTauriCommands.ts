@@ -14,6 +14,7 @@ import type {
   SchemaValidationIssue,
   GitEnvStatus,
   FileMtimeEntry,
+  UnusedKeyResult,
 } from "../types";
 
 export function scanEnvFiles(projectRoot: string): Promise<ScannedEnvFile[]> {
@@ -150,4 +151,16 @@ export function getEnvFileMtimes(
   projectRoot: string,
 ): Promise<FileMtimeEntry[]> {
   return invoke<FileMtimeEntry[]>("get_env_file_mtimes", { projectRoot });
+}
+
+// Unused variable detection commands
+
+export function detectUnusedEnvKeys(
+  projectRoot: string,
+  keys: string[],
+): Promise<UnusedKeyResult[]> {
+  return invoke<UnusedKeyResult[]>("detect_unused_env_keys", {
+    projectRoot,
+    keys,
+  });
 }

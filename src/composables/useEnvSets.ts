@@ -65,15 +65,17 @@ export function useEnvSets() {
   function persistSets() {
     if (persistTimer) clearTimeout(persistTimer);
     persistTimer = setTimeout(() => {
-      const payload: PersistedSet[] = envSets.value.map((s) => ({
-        id: s.id,
-        projectId: s.projectId,
-        name: s.name,
-        role: s.role,
-        source: s.source,
-        rawText: s.rawText,
-        filePath: s.filePath,
-      }));
+      const payload: PersistedSet[] = envSets.value
+        .filter((s) => s.source !== "import")
+        .map((s) => ({
+          id: s.id,
+          projectId: s.projectId,
+          name: s.name,
+          role: s.role,
+          source: s.source,
+          rawText: s.rawText,
+          filePath: s.filePath,
+        }));
       try {
         localStorage.setItem(SET_STORAGE_KEY, JSON.stringify(payload));
       } catch (e) {

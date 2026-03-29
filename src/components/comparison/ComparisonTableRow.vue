@@ -5,6 +5,7 @@ import { useMasking } from "../../composables/useMasking";
 import { useSecretDetection } from "../../composables/useSecretDetection";
 import { useChangeHistory } from "../../composables/useChangeHistory";
 import { useDependencies } from "../../composables/useDependencies";
+import { useUnusedDetection } from "../../composables/useUnusedDetection";
 import StatusBadge from "./StatusBadge.vue";
 import { SButton as BaseButton } from "@stuntrocket/ui";
 
@@ -31,6 +32,7 @@ const { maskValue, shouldMask, isSensitiveKey, MASK_PLACEHOLDER } = useMasking()
 const { detectSecret } = useSecretDetection();
 const { getKeyHistory, formatRelativeTime } = useChangeHistory();
 const { getRelatedKeys, getDependencies, hasRelatedKeys } = useDependencies();
+const { isUnused, lastScanTime } = useUnusedDetection();
 const revealedCells = ref<Set<string>>(new Set());
 const editValue = ref("");
 const showHistory = ref(false);
@@ -200,6 +202,11 @@ function cellIsMasked(setId: string): boolean {
           v-if="!row.missingCount && !row.drift && !row.unsafe"
           status="aligned"
         />
+        <span
+          v-if="lastScanTime && isUnused(row.key)"
+          class="inline-flex items-center rounded-[var(--radius-sm)] bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400"
+          title="Not found in project source code"
+        >unused</span>
       </div>
     </td>
     <td
