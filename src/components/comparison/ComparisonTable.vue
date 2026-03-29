@@ -22,6 +22,7 @@ const emit = defineEmits<{
   copyToEnv: [targetSetId: string, key: string, value: string];
   "update:focusedRowIndex": [index: number];
   moveColumn: [fromIndex: number, toIndex: number];
+  removeImported: [setId: string];
 }>();
 
 const expandedKey = ref<string | null>(null);
@@ -124,6 +125,18 @@ function onDragEnd() {
                 <circle cx="9" cy="18" r="1.5" fill="currentColor"/><circle cx="15" cy="18" r="1.5" fill="currentColor"/>
               </svg>
               {{ set.name }}
+              <span v-if="set.source === 'import'" class="inline-flex items-center gap-0.5 rounded bg-accent/10 px-1 py-0.5 text-[9px] font-semibold text-accent uppercase tracking-wider">
+                temp
+                <button
+                  class="ml-0.5 hover:text-red-400 transition-colors"
+                  title="Remove imported file"
+                  @click.stop="emit('removeImported', set.id)"
+                >
+                  <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </span>
             </span>
           </th>
         </tr>
