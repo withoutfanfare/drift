@@ -360,7 +360,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-24
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-29
 - **Description:** Drift shows drift between environment files — missing keys, value differences, suspicious patterns — but cannot tell whether an environment variable is actually used by the application. Over time, .env files accumulate legacy variables from removed features, deprecated integrations, and copied-from-example defaults that serve no purpose. Scanning the project's source code for common environment access patterns (Laravel's `env()` and `config()` calls, Node's `process.env`, Python's `os.environ`) and flagging variables with no code reference would help developers clean up configuration debt and reduce confusion during drift analysis sessions. The existing project root path (already registered for env file scanning) provides the scope for source code search.
 - **Acceptance criteria:**
   - "Detect unused" action available from the project toolbar or comparison matrix
@@ -405,7 +406,8 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-24
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-29
 - **Description:** When debugging environment issues with a colleague, developers frequently receive .env files via Slack, email, or airdrop that they need to compare against their project's environment configurations. Currently, the received file must be saved into the project directory and scanned alongside the existing env files — polluting the project structure with a temporary file that must be cleaned up afterwards. Supporting drag-and-drop of an external .env file onto the comparison matrix as a temporary, non-persisted column would streamline ad-hoc comparison without modifying the project's file structure, matching the transient investigation workflow that real-world debugging demands.
 - **Acceptance criteria:**
   - Drag-and-drop of a .env file onto the comparison matrix adds it as a temporary column with a distinct "imported" visual style
