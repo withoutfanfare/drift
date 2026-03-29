@@ -16,6 +16,7 @@ import { useDebouncedComputed } from "../../composables/useDebounce";
 import { upsertEnvKeyInRaw } from "../../composables/useEnvMutations";
 import { useResolutionSummary } from "../../composables/useResolutionSummary";
 import { useColumnOrder } from "../../composables/useColumnOrder";
+import { useUnusedDetection } from "../../composables/useUnusedDetection";
 import { buildMissingTemplate, buildMergedTemplate, buildPatchPreview, getMissingEntries } from "../../composables/useTemplates";
 import { appendMissingEnvKeys, upsertEnvKey, writeEnvFile, writeEnvExample, rotateBackups } from "../../composables/useTauriCommands";
 import { asFilter } from "../../composables/useRoles";
@@ -33,7 +34,7 @@ const props = defineProps<{
   analysis: KeyAnalysisRow[];
 }>();
 
-const { applyRawToSet } = useEnvSets();
+const { applyRawToSet, addOrReplaceSet, removeSet } = useEnvSets();
 const { statusMessage, setStatus } = useStatus();
 const { log } = useActivityLog();
 const { recordChange } = useChangeHistory();
@@ -44,11 +45,14 @@ const { hasSchema, schemaIssues, schemaErrorCount, schemaWarningCount, loadSchem
 const { uncommittedCount, hasUncommittedChanges, checkGitStatus, isFileUncommitted } = useGitTracking();
 const { hasSessionChanges, generateMarkdown } = useResolutionSummary();
 const { orderedSets, moveColumn, resetOrder, hasCustomOrder } = useColumnOrder(() => props.sets);
+const { unusedCount, scanning: unusedScanning, lastScanTime, scanForUnused, isUnused, clearResults: clearUnused } = useUnusedDetection();
 
 const { activeProject, activeProjectId } = useProjects();
 
 const showSchemaIssues = ref(false);
 const showGitWarnings = ref(false);
+const dragOver = ref(false);
+let dragLeaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 const filter = ref("all");
 const search = ref("");
@@ -98,6 +102,7 @@ watch(activeProjectId, () => {
   focusedRowIndex.value = -1;
   showSchemaIssues.value = false;
   showGitWarnings.value = false;
+  clearUnused();
   loadSchema();
   checkGitStatus();
 });
@@ -177,6 +182,7 @@ const displayRows = useDebouncedComputed(
       if (f === "missing") return row.missingCount > 0;
       if (f === "drift") return row.drift;
       if (f === "unsafe") return row.unsafe;
+      if (f === "unused") return isUnused(row.key);
       return row.primaryStatus === "aligned";
     });
   },
@@ -221,6 +227,64 @@ const { helpVisible, SHORTCUT_HELP } = useKeyboardShortcuts({
     focusedRowIndex.value = -1;
   },
 });
+
+function onDragEnter(e: DragEvent) {
+  e.preventDefault();
+  if (dragLeaveTimer) clearTimeout(dragLeaveTimer);
+  if (e.dataTransfer?.types.includes("Files")) {
+    dragOver.value = true;
+  }
+}
+
+function onDragLeave() {
+  if (dragLeaveTimer) clearTimeout(dragLeaveTimer);
+  dragLeaveTimer = setTimeout(() => { dragOver.value = false; }, 100);
+}
+
+function onCardDragOver(e: DragEvent) {
+  e.preventDefault();
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = "copy";
+  }
+}
+
+async function onDrop(e: DragEvent) {
+  e.preventDefault();
+  dragOver.value = false;
+
+  if (!activeProject.value) {
+    setStatus("No active project selected.");
+    return;
+  }
+
+  const files = Array.from(e.dataTransfer?.files ?? []);
+  const envFiles = files.filter((f) => f.name.startsWith(".env") || f.name.endsWith(".env"));
+
+  if (envFiles.length === 0) {
+    setStatus("No .env files found in the dropped items.");
+    return;
+  }
+
+  let imported = 0;
+  for (const file of envFiles) {
+    const raw = await file.text();
+    addOrReplaceSet({
+      projectId: activeProject.value.id,
+      name: `${file.name} (imported)`,
+      source: "import",
+      rawText: raw,
+    });
+    imported += 1;
+  }
+
+  setStatus(`Imported ${imported} .env file${imported !== 1 ? "s" : ""} for temporary comparison.`);
+  log("info", `Imported ${imported} .env file${imported !== 1 ? "s" : ""} via drag-and-drop`);
+}
+
+function removeImportedSet(setId: string) {
+  removeSet(setId);
+  setStatus("Removed imported .env file.");
+}
 
 async function onCopyMissing() {
   if (!referenceSet.value || !targetSet.value) {
@@ -452,6 +516,27 @@ async function onGenerateSchema() {
   }
 }
 
+async function onDetectUnused() {
+  if (!activeProject.value) {
+    setStatus("No active project selected.");
+    return;
+  }
+  const allKeys = props.analysis.map((r) => r.key);
+  if (allKeys.length === 0) {
+    setStatus("No env keys loaded to check.");
+    return;
+  }
+  setStatus("Scanning source code for env variable references...");
+  await scanForUnused(allKeys);
+  if (unusedCount.value > 0) {
+    setStatus(`Found ${unusedCount.value} potentially unused variable${unusedCount.value === 1 ? "" : "s"}.`);
+    log("info", `Detected ${unusedCount.value} potentially unused env variables`);
+  } else {
+    setStatus("All env variables appear to be referenced in source code.");
+    log("info", "Unused detection scan: all variables referenced");
+  }
+}
+
 async function onCopyValueToClipboard(value: string) {
   try {
     await navigator.clipboard.writeText(value);
@@ -512,7 +597,28 @@ async function onSaveFile(setId: string) {
 </script>
 
 <template>
-  <SCard variant="glass" class="p-4">
+  <SCard
+    variant="glass"
+    class="p-4 relative"
+    @dragenter="onDragEnter"
+    @dragleave="onDragLeave"
+    @dragover="onCardDragOver"
+    @drop="onDrop"
+  >
+    <!-- Drop zone overlay -->
+    <div
+      v-if="dragOver"
+      class="absolute inset-0 z-50 flex items-center justify-center rounded-[var(--radius-lg)] border-2 border-dashed border-accent bg-accent/5 backdrop-blur-sm pointer-events-none"
+    >
+      <div class="text-center">
+        <svg class="h-8 w-8 mx-auto mb-2 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p class="text-sm font-medium text-accent">Drop .env files to compare</p>
+        <p class="text-xs text-text-muted mt-1">Files will be added as temporary columns</p>
+      </div>
+    </div>
+
     <!-- Compact toolbar: selects + actions -->
     <div class="flex flex-wrap items-center gap-2 mb-3">
       <SSelect v-model="filter" size="sm" aria-label="Filter rows" class="w-[100px]">
@@ -521,6 +627,7 @@ async function onSaveFile(setId: string) {
         <option value="drift">Drift</option>
         <option value="unsafe">Unsafe</option>
         <option value="aligned">Aligned</option>
+        <option v-if="lastScanTime" value="unused">Unused ({{ unusedCount }})</option>
       </SSelect>
       <SSearchInput v-model="search" size="sm" data-search-input placeholder="Search keys..." class="min-w-[180px] flex-1" />
       <SSelect v-model="referenceSetId" size="sm" aria-label="Compare from" class="flex-1 min-w-[140px]">
@@ -535,6 +642,7 @@ async function onSaveFile(setId: string) {
         <SButton variant="secondary" size="sm" @click="onGenerateEnvExample">.env.example</SButton>
         <SButton v-if="hasSessionChanges" variant="secondary" size="sm" @click="onCopySummary" title="Copy Markdown summary of this session's changes">Summary</SButton>
         <SButton v-if="!hasSchema" variant="secondary" size="sm" @click="onGenerateSchema" title="Generate .env.schema.json from current values">Schema</SButton>
+        <SButton variant="secondary" size="sm" :disabled="unusedScanning" @click="onDetectUnused" title="Scan source code for unused env variables">{{ unusedScanning ? 'Scanning...' : 'Detect unused' }}</SButton>
         <SButton
           variant="secondary"
           size="sm"
@@ -628,6 +736,18 @@ async function onSaveFile(setId: string) {
         </svg>
         Schema
       </span>
+
+      <button
+        v-if="unusedCount > 0"
+        class="focus-ring inline-flex items-center gap-1 rounded-[var(--radius-md)] px-2 py-0.5 text-[11px] font-medium transition-colors"
+        :class="filter === 'unused' ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-500/5 text-violet-400/60 hover:text-violet-400'"
+        @click="filter = filter === 'unused' ? 'all' : 'unused'"
+      >
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        {{ unusedCount }} potentially unused
+      </button>
 
       <button
         v-if="hasUncommittedChanges"
@@ -724,6 +844,7 @@ async function onSaveFile(setId: string) {
       @copy-to-env="onCopyValueToEnv"
       @update:focused-row-index="focusedRowIndex = $event"
       @move-column="moveColumn"
+      @remove-imported="removeImportedSet"
     />
 
     <!-- Per-file save bar -->

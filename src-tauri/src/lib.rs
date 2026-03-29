@@ -1580,6 +1580,149 @@ fn collect_env_mtimes(
     }
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UnusedKeyResult {
+    key: String,
+    referenced: bool,
+}
+
+#[tauri::command]
+fn detect_unused_env_keys(
+    project_root: String,
+    keys: Vec<String>,
+) -> Result<Vec<UnusedKeyResult>, String> {
+    let root = PathBuf::from(project_root.trim());
+    if !root.is_dir() {
+        return Err("Project path is not a directory".to_string());
+    }
+
+    // Collect all source file contents into one large string per file
+    let mut source_contents: Vec<String> = Vec::new();
+    collect_source_files(&root, &mut source_contents, 0);
+
+    let results: Vec<UnusedKeyResult> = keys
+        .into_iter()
+        .map(|key| {
+            let referenced = source_contents.iter().any(|content| is_key_referenced(content, &key));
+            UnusedKeyResult { key, referenced }
+        })
+        .collect();
+
+    Ok(results)
+}
+
+fn collect_source_files(
+    current: &Path,
+    contents: &mut Vec<String>,
+    depth: usize,
+) {
+    if depth > 10 {
+        return;
+    }
+
+    let entries = match fs::read_dir(current) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    for entry_result in entries {
+        let entry = match entry_result {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+
+        let path = entry.path();
+        let file_name = match path.file_name().and_then(|n| n.to_str()) {
+            Some(n) => n.to_string(),
+            None => continue,
+        };
+
+        let file_type = match entry.file_type() {
+            Ok(ft) => ft,
+            Err(_) => continue,
+        };
+
+        if file_type.is_symlink() {
+            continue;
+        }
+
+        if file_type.is_dir() {
+            if should_skip_dir(&file_name) {
+                continue;
+            }
+            collect_source_files(&path, contents, depth + 1);
+            continue;
+        }
+
+        if !file_type.is_file() || !is_source_file(&file_name) {
+            continue;
+        }
+
+        // Skip files over 500KB
+        if let Ok(meta) = fs::metadata(&path) {
+            if meta.len() > 500_000 {
+                continue;
+            }
+        }
+
+        if let Ok(content) = fs::read_to_string(&path) {
+            contents.push(content);
+        }
+    }
+}
+
+fn is_source_file(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    lower.ends_with(".php")
+        || lower.ends_with(".js")
+        || lower.ends_with(".ts")
+        || lower.ends_with(".jsx")
+        || lower.ends_with(".tsx")
+        || lower.ends_with(".vue")
+        || lower.ends_with(".py")
+        || lower.ends_with(".rb")
+        || lower.ends_with(".go")
+        || lower.ends_with(".rs")
+        || lower.ends_with(".blade.php")
+}
+
+fn is_key_referenced(content: &str, key: &str) -> bool {
+    // Common patterns for environment variable access:
+    // PHP/Laravel: env('KEY'), getenv('KEY'), $_ENV['KEY'], Env::get('KEY')
+    // JS/TS/Node: process.env.KEY, import.meta.env.KEY
+    // Python: os.environ['KEY'], os.getenv('KEY')
+    // Config files may reference keys as strings
+
+    // Quick check: if the key doesn't appear at all, skip detailed checks
+    if !content.contains(key) {
+        return false;
+    }
+
+    // Check for common env access patterns with the key as a string literal
+    let single_quoted = format!("'{}'", key);
+    let double_quoted = format!("\"{}\"", key);
+
+    if content.contains(&single_quoted) || content.contains(&double_quoted) {
+        return true;
+    }
+
+    // Check for process.env.KEY or import.meta.env.KEY (JS/TS)
+    let dot_access = format!("env.{}", key);
+    if content.contains(&dot_access) {
+        return true;
+    }
+
+    // Check for $_ENV['KEY'] or os.environ['KEY'] patterns
+    let bracket_access = format!("['{key}']");
+    let bracket_access_double = format!("[\"{key}\"]");
+    if content.contains(&bracket_access) || content.contains(&bracket_access_double) {
+        return true;
+    }
+
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2109,7 +2252,8 @@ pub fn run() {
             generate_env_schema,
             write_env_schema,
             check_env_git_status,
-            get_env_file_mtimes
+            get_env_file_mtimes,
+            detect_unused_env_keys
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

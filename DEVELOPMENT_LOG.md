@@ -1,5 +1,16 @@
 # Drift Development Log
 
+## Cycle: 2026-03-30 00:00
+- App: Drift
+- Items completed:
+  - [Quality] Unused environment variable detection — Rust backend scans source files for env variable access patterns (env(), process.env, os.environ, getenv, bracket/dot access); frontend adds "Detect unused" button, filter badge, and per-row "unused" badge
+  - [UX/UI] Environment file drag-and-drop import — Drop .env files onto the comparison matrix to add temporary, non-persisted columns with "temp" badge and remove button; new "import" source type excluded from localStorage persistence
+- Items attempted but failed: none
+- Branch: feature/unused-detection-and-drag-import
+- Tests passing: yes (35/35 Rust tests, vue-tsc clean)
+- Build status: pending (merge to main)
+- Notes: Both items are P3 S batch. Unused detection supports PHP, JS/TS, Vue, Python, Ruby, Go, Rust source files with 500KB file size limit and 10-level depth.
+
 ## Cycle: 2026-03-29 23:30
 - App: Drift
 - Items completed:

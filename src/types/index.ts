@@ -1,7 +1,7 @@
 export type AppPage = "dashboard" | "projects" | "overview" | "help";
-export type EnvSource = "file" | "manual" | "scan";
+export type EnvSource = "file" | "manual" | "scan" | "import";
 export type EnvRole = "local" | "staging" | "live" | "other";
-export type RowFilter = "all" | "missing" | "drift" | "unsafe" | "aligned";
+export type RowFilter = "all" | "missing" | "drift" | "unsafe" | "aligned" | "unused";
 
 export interface ProjectProfile {
   id: string;
@@ -215,4 +215,10 @@ export interface FileMtimeEntry {
   path: string;
   mtime: number;
   size: number;
+}
+
+/** Result of checking whether an env key is referenced in source code */
+export interface UnusedKeyResult {
+  key: string;
+  referenced: boolean;
 }
