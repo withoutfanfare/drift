@@ -181,16 +181,67 @@ fn append_missing_env_keys(
         });
     }
 
-    let mut updated = original.clone();
-    if !updated.ends_with('\n') {
-        updated.push('\n');
-    }
+    let line_ending = detect_line_ending(&original);
+    let mut lines: Vec<String> = split_lines_preserving(&original)
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
 
-    updated.push_str(&format!("# Added by Drift at {}\n", unix_timestamp()));
+    // Separate entries into those that match a group and those that go at the end
+    let mut ungrouped: Vec<(String, String)> = Vec::new();
 
     for (key, value) in &append_entries {
-        updated.push_str(&format!("{}={}\n", key, format_env_value(value)));
+        let lines_as_refs: Vec<&str> = lines.iter().map(|s| s.as_str()).collect();
+        let group_idx = find_group_insertion_index(&lines_as_refs, key);
+
+        if let Some(insert_at) = group_idx {
+            let new_line = format!(
+                "{}={}{}",
+                key,
+                format_env_value(value),
+                line_ending
+            );
+            lines.insert(insert_at, new_line);
+        } else {
+            ungrouped.push((key.clone(), value.clone()));
+        }
     }
+
+    // Append ungrouped entries at the end with a comment header
+    if !ungrouped.is_empty() {
+        let has_trailing_newline = lines
+            .last()
+            .map(|l| {
+                let stripped = l.trim_end_matches('\n').trim_end_matches('\r');
+                stripped.is_empty()
+            })
+            .unwrap_or(true);
+
+        // Ensure file content ends with a line ending before appending
+        if !lines.is_empty() {
+            let last_idx = lines.len() - 1;
+            if !lines[last_idx].ends_with('\n') {
+                lines[last_idx].push_str(line_ending);
+            }
+        }
+
+        if !has_trailing_newline {
+            // No blank line at end — don't add extra separator, just the comment
+        }
+
+        lines.push(format!("# Added by Drift at {}{}", unix_timestamp(), line_ending));
+
+        for (key, value) in &ungrouped {
+            lines.push(format!(
+                "{}={}{}",
+                key,
+                format_env_value(value),
+                line_ending
+            ));
+        }
+    }
+
+    let updated: String = lines.concat();
 
     atomic_write(&path, &updated)?;
 
@@ -231,12 +282,17 @@ fn upsert_env_key(
     let original = fs::read_to_string(&path)
         .map_err(|error| format!("Failed to read target env file: {}", error))?;
 
-    let mut lines: Vec<String> = original.lines().map(|line| line.to_string()).collect();
+    let line_ending = detect_line_ending(&original);
+    let mut lines: Vec<String> = split_lines_preserving(&original)
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
 
     // Find the last occurrence to match standard env precedence
     let mut last_match: Option<usize> = None;
     for (i, line) in lines.iter().enumerate() {
-        if let Some(found_key) = parse_env_key_from_line(line) {
+        let stripped = line.trim_end_matches('\n').trim_end_matches('\r');
+        if let Some(found_key) = parse_env_key_from_line(stripped) {
             if found_key == normalized_key {
                 last_match = Some(i);
             }
@@ -245,24 +301,64 @@ fn upsert_env_key(
 
     let mut matched_count = 0usize;
     if let Some(idx) = last_match {
-        lines[idx] = format!("{}={}", normalized_key, format_env_value(&value));
+        // Preserve the line ending from the original line
+        let orig_line = &lines[idx];
+        let trailing = if orig_line.ends_with("\r\n") {
+            "\r\n"
+        } else if orig_line.ends_with('\n') {
+            "\n"
+        } else {
+            ""
+        };
+        let stripped = orig_line.trim_end_matches('\n').trim_end_matches('\r');
+        let new_content = replace_line_value(stripped, &value);
+        lines[idx] = format!("{}{}", new_content, trailing);
         matched_count = 1;
     }
 
     let mut appended = false;
     if matched_count == 0 {
         appended = true;
-        if !lines.is_empty() && !lines.last().map(|line| line.is_empty()).unwrap_or(false) {
-            lines.push(String::new());
+
+        // Try to find the correct service group for this key
+        let lines_as_refs: Vec<&str> = lines.iter().map(|s| s.as_str()).collect();
+        let group_idx = find_group_insertion_index(&lines_as_refs, &normalized_key);
+
+        let new_line = format!(
+            "{}={}{}",
+            normalized_key,
+            format_env_value(&value),
+            line_ending
+        );
+
+        if let Some(insert_at) = group_idx {
+            // Insert within the group — no comment header needed
+            lines.insert(insert_at, new_line);
+        } else {
+            // Append at the end with a blank-line separator and comment
+            let has_trailing_newline = lines
+                .last()
+                .map(|l| {
+                    let stripped = l.trim_end_matches('\n').trim_end_matches('\r');
+                    stripped.is_empty()
+                })
+                .unwrap_or(true);
+
+            if !lines.is_empty() && !has_trailing_newline {
+                // Ensure the last line has a line ending before we add blank separator
+                let last_idx = lines.len() - 1;
+                if !lines[last_idx].ends_with('\n') {
+                    lines[last_idx].push_str(line_ending);
+                }
+                lines.push(line_ending.to_string());
+            }
+
+            lines.push(format!("# Added by Drift at {}{}", unix_timestamp(), line_ending));
+            lines.push(new_line);
         }
-        lines.push(format!("# Added by Drift at {}", unix_timestamp()));
-        lines.push(format!("{}={}", normalized_key, format_env_value(&value)));
     }
 
-    let mut updated = lines.join("\n");
-    if original.ends_with('\n') || appended {
-        updated.push('\n');
-    }
+    let updated: String = lines.concat();
 
     atomic_write(&path, &updated)?;
 
@@ -725,6 +821,175 @@ fn is_valid_env_key(key: &str) -> bool {
     }
 
     key.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+}
+
+/// Detect whether a file's content uses CRLF or LF line endings.
+/// Returns "\r\n" if the first line ending found is CRLF, otherwise "\n".
+fn detect_line_ending(content: &str) -> &'static str {
+    for (i, ch) in content.char_indices() {
+        if ch == '\r' {
+            if content.get(i + 1..i + 2) == Some("\n") {
+                return "\r\n";
+            }
+        } else if ch == '\n' {
+            return "\n";
+        }
+    }
+    "\n"
+}
+
+/// Split content into lines preserving the original line endings.
+/// Each returned string includes its trailing line ending (if any).
+/// The last element may have no trailing line ending if the file
+/// does not end with one.
+fn split_lines_preserving(content: &str) -> Vec<&str> {
+    let mut lines = Vec::new();
+    let mut start = 0;
+    let bytes = content.as_bytes();
+    let len = bytes.len();
+
+    let mut i = 0;
+    while i < len {
+        if bytes[i] == b'\n' {
+            lines.push(&content[start..=i]);
+            start = i + 1;
+        } else if bytes[i] == b'\r' {
+            if i + 1 < len && bytes[i + 1] == b'\n' {
+                lines.push(&content[start..=i + 1]);
+                start = i + 2;
+                i += 1; // skip the \n
+            } else {
+                lines.push(&content[start..=i]);
+                start = i + 1;
+            }
+        }
+        i += 1;
+    }
+
+    // Remaining content after the last line ending (no trailing newline)
+    if start < len {
+        lines.push(&content[start..]);
+    }
+
+    lines
+}
+
+/// Extract the inline comment from an env line (the ` # ...` portion after the value).
+/// Returns `None` if there is no inline comment.
+/// This respects quoted values — a `#` inside quotes is not a comment.
+fn extract_inline_comment(line: &str) -> Option<&str> {
+    let trimmed = line.trim();
+
+    // Find the `=` to skip past the key
+    let eq_pos = trimmed.find('=')?;
+
+    let after_eq = &trimmed[eq_pos + 1..];
+    let after_eq_trimmed = after_eq.trim_start();
+
+    if after_eq_trimmed.is_empty() {
+        return None;
+    }
+
+    let quote_char = after_eq_trimmed.as_bytes()[0];
+    if quote_char == b'"' || quote_char == b'\'' {
+        // Walk past the quoted value
+        let chars = after_eq_trimmed.char_indices().skip(1);
+        let mut escaped = false;
+        for (idx, ch) in chars {
+            if escaped {
+                escaped = false;
+                continue;
+            }
+            if ch == '\\' && quote_char == b'"' {
+                escaped = true;
+                continue;
+            }
+            if ch as u8 == quote_char {
+                // After closing quote, look for ` #` or `#`
+                let remainder = &after_eq_trimmed[idx + 1..];
+                let remainder_trimmed = remainder.trim_start();
+                if remainder_trimmed.starts_with('#') {
+                    // Find the `#` position in the original line
+                    let comment_start = line.len() - remainder_trimmed.len();
+                    return Some(line[comment_start..].trim_end());
+                }
+                return None;
+            }
+        }
+        // Unterminated quote — no inline comment
+        return None;
+    }
+
+    // Unquoted value — find ` #` pattern (space then hash)
+    if let Some(pos) = after_eq.find(" #") {
+        // pos points at the space; the `#` starts at pos + 1
+        let hash_offset_in_trimmed = eq_pos + 1 + pos + 1;
+        let leading_spaces = line.len() - line.trim_start().len();
+        return Some(line[leading_spaces + hash_offset_in_trimmed..].trim_end());
+    }
+
+    None
+}
+
+/// Extract the prefix of an env key for grouping purposes.
+/// e.g. "DB_HOST" -> "DB_", "MAIL_FROM_ADDRESS" -> "MAIL_", "APP_NAME" -> "APP_"
+/// Returns `None` for keys with no underscore (e.g. "PORT").
+fn extract_key_prefix(key: &str) -> Option<String> {
+    if let Some(pos) = key.find('_') {
+        if pos > 0 {
+            return Some(key[..=pos].to_string());
+        }
+    }
+    None
+}
+
+/// Replace only the value portion of an env line, preserving any inline comment
+/// and the original key formatting (including `export` prefix and spacing).
+fn replace_line_value(original_line: &str, new_value: &str) -> String {
+    let trimmed = original_line.trim();
+
+    // Find the = sign
+    let eq_pos = match trimmed.find('=') {
+        Some(pos) => pos,
+        None => return original_line.to_string(),
+    };
+
+    // Preserve leading whitespace from the original line
+    let leading = &original_line[..original_line.len() - original_line.trim_start().len()];
+
+    // Everything before and including the `=`
+    let key_part = &trimmed[..=eq_pos];
+
+    // Get inline comment if present
+    let inline_comment = extract_inline_comment(original_line);
+
+    let formatted_value = format_env_value(new_value);
+
+    match inline_comment {
+        Some(comment) => format!("{}{}{} {}", leading, key_part, formatted_value, comment),
+        None => format!("{}{}{}", leading, key_part, formatted_value),
+    }
+}
+
+/// Find the best insertion index for a new key based on prefix grouping.
+/// Scans lines for keys sharing the same prefix and returns the index
+/// after the last such key. Returns `None` if no group match is found.
+fn find_group_insertion_index(lines: &[&str], key: &str) -> Option<usize> {
+    let prefix = extract_key_prefix(key)?;
+
+    let mut last_group_line: Option<usize> = None;
+    for (i, line) in lines.iter().enumerate() {
+        let stripped = line.trim_end_matches('\n').trim_end_matches('\r');
+        if let Some(found_key) = parse_env_key_from_line(stripped) {
+            if let Some(found_prefix) = extract_key_prefix(&found_key) {
+                if found_prefix == prefix {
+                    last_group_line = Some(i);
+                }
+            }
+        }
+    }
+
+    last_group_line.map(|idx| idx + 1)
 }
 
 fn format_env_value(value: &str) -> String {
@@ -1589,6 +1854,236 @@ mod tests {
             })
             .collect();
         assert!(leftover.is_empty(), "Temp files should be cleaned up");
+    }
+
+    // ── Format preservation tests ─────────────────────────────
+
+    #[test]
+    fn round_trip_lf_file_unchanged() {
+        let content = "# Application\nAPP_NAME=Drift\nAPP_ENV=local\n\n# Database\nDB_HOST=127.0.0.1\nDB_PORT=3306\n";
+        let lines = split_lines_preserving(content);
+        let rejoined: String = lines.concat();
+        assert_eq!(rejoined, content, "LF round-trip must be byte-identical");
+    }
+
+    #[test]
+    fn round_trip_crlf_file_unchanged() {
+        let content = "# Application\r\nAPP_NAME=Drift\r\nAPP_ENV=local\r\n\r\n# Database\r\nDB_HOST=127.0.0.1\r\nDB_PORT=3306\r\n";
+        let lines = split_lines_preserving(content);
+        let rejoined: String = lines.concat();
+        assert_eq!(rejoined, content, "CRLF round-trip must be byte-identical");
+    }
+
+    #[test]
+    fn round_trip_no_trailing_newline() {
+        let content = "APP_NAME=Drift\nDB_HOST=localhost";
+        let lines = split_lines_preserving(content);
+        let rejoined: String = lines.concat();
+        assert_eq!(rejoined, content, "File without trailing newline must round-trip");
+    }
+
+    #[test]
+    fn detect_line_ending_crlf() {
+        assert_eq!(detect_line_ending("FOO=bar\r\nBAZ=qux\r\n"), "\r\n");
+    }
+
+    #[test]
+    fn detect_line_ending_lf() {
+        assert_eq!(detect_line_ending("FOO=bar\nBAZ=qux\n"), "\n");
+    }
+
+    #[test]
+    fn detect_line_ending_no_newlines() {
+        assert_eq!(detect_line_ending("FOO=bar"), "\n");
+    }
+
+    #[test]
+    fn extract_inline_comment_unquoted() {
+        assert_eq!(
+            extract_inline_comment("DB_HOST=localhost # primary database"),
+            Some("# primary database")
+        );
+    }
+
+    #[test]
+    fn extract_inline_comment_quoted_value() {
+        assert_eq!(
+            extract_inline_comment("APP_NAME=\"My App\" # the app name"),
+            Some("# the app name")
+        );
+    }
+
+    #[test]
+    fn extract_inline_comment_hash_inside_quotes() {
+        assert_eq!(
+            extract_inline_comment("SECRET=\"abc#def\""),
+            None
+        );
+    }
+
+    #[test]
+    fn extract_inline_comment_no_comment() {
+        assert_eq!(extract_inline_comment("DB_PORT=3306"), None);
+    }
+
+    #[test]
+    fn replace_line_value_preserves_inline_comment() {
+        let original = "DB_HOST=localhost # primary database";
+        let result = replace_line_value(original, "prod-db.example.com");
+        assert_eq!(result, "DB_HOST=prod-db.example.com # primary database");
+    }
+
+    #[test]
+    fn replace_line_value_no_comment() {
+        let original = "DB_PORT=3306";
+        let result = replace_line_value(original, "5432");
+        assert_eq!(result, "DB_PORT=5432");
+    }
+
+    #[test]
+    fn replace_line_value_preserves_export_prefix() {
+        let original = "export DB_HOST=localhost # main db";
+        let result = replace_line_value(original, "new-host");
+        assert_eq!(result, "export DB_HOST=new-host # main db");
+    }
+
+    #[test]
+    fn extract_key_prefix_returns_prefix() {
+        assert_eq!(extract_key_prefix("DB_HOST"), Some("DB_".to_string()));
+        assert_eq!(extract_key_prefix("MAIL_FROM_ADDRESS"), Some("MAIL_".to_string()));
+        assert_eq!(extract_key_prefix("PORT"), None);
+    }
+
+    #[test]
+    fn find_group_insertion_index_finds_group() {
+        let lines = vec![
+            "APP_NAME=Test\n",
+            "APP_ENV=local\n",
+            "\n",
+            "DB_HOST=localhost\n",
+            "DB_PORT=3306\n",
+        ];
+        // DB_PASSWORD should go after DB_PORT (index 4), so insert at 5
+        assert_eq!(find_group_insertion_index(&lines, "DB_PASSWORD"), Some(5));
+        // APP_KEY should go after APP_ENV (index 1), so insert at 2
+        assert_eq!(find_group_insertion_index(&lines, "APP_KEY"), Some(2));
+        // CACHE_DRIVER has no group match
+        assert_eq!(find_group_insertion_index(&lines, "CACHE_DRIVER"), None);
+    }
+
+    #[test]
+    fn upsert_preserves_inline_comment() {
+        let (dir, env_path) = create_temp_project();
+        fs::write(&env_path, "DB_HOST=localhost # primary database\nDB_PORT=3306\n").unwrap();
+
+        let result = upsert_env_key(
+            env_path.to_str().unwrap().to_string(),
+            dir.path().to_str().unwrap().to_string(),
+            "DB_HOST".to_string(),
+            "prod-db.example.com".to_string(),
+            false,
+        ).unwrap();
+
+        assert_eq!(result.matched_count, 1);
+        assert!(!result.appended);
+        assert!(
+            result.updated_content.contains("DB_HOST=prod-db.example.com # primary database"),
+            "Inline comment should be preserved. Got: {}",
+            result.updated_content
+        );
+    }
+
+    #[test]
+    fn upsert_preserves_crlf_line_endings() {
+        let (dir, env_path) = create_temp_project();
+        let content = "APP_NAME=Test\r\nDB_HOST=localhost\r\n";
+        fs::write(&env_path, content).unwrap();
+
+        let result = upsert_env_key(
+            env_path.to_str().unwrap().to_string(),
+            dir.path().to_str().unwrap().to_string(),
+            "DB_HOST".to_string(),
+            "newhost".to_string(),
+            false,
+        ).unwrap();
+
+        assert!(
+            result.updated_content.contains("\r\n"),
+            "CRLF line endings should be preserved"
+        );
+        assert!(
+            !result.updated_content.contains("localhost"),
+            "Old value should be replaced"
+        );
+    }
+
+    #[test]
+    fn upsert_appends_to_matching_group() {
+        let (dir, env_path) = create_temp_project();
+        fs::write(&env_path, "APP_NAME=Test\n\nDB_HOST=localhost\nDB_PORT=3306\n").unwrap();
+
+        let result = upsert_env_key(
+            env_path.to_str().unwrap().to_string(),
+            dir.path().to_str().unwrap().to_string(),
+            "DB_PASSWORD".to_string(),
+            "secret".to_string(),
+            false,
+        ).unwrap();
+
+        assert!(result.appended);
+        // DB_PASSWORD should appear after DB_PORT, not at the very end with a comment
+        let lines: Vec<&str> = result.updated_content.lines().collect();
+        let db_port_idx = lines.iter().position(|l| l.starts_with("DB_PORT")).unwrap();
+        let db_pass_idx = lines.iter().position(|l| l.starts_with("DB_PASSWORD")).unwrap();
+        assert_eq!(
+            db_pass_idx,
+            db_port_idx + 1,
+            "DB_PASSWORD should be inserted right after DB_PORT"
+        );
+        // Should not have "Added by Drift" comment when inserted into a group
+        assert!(
+            !result.updated_content.contains("Added by Drift"),
+            "Group-inserted keys should not have the Drift comment"
+        );
+    }
+
+    #[test]
+    fn upsert_no_change_is_byte_identical() {
+        let (dir, env_path) = create_temp_project();
+        let content = "APP_NAME=Test\nDB_HOST=localhost\n";
+        fs::write(&env_path, content).unwrap();
+
+        let result = upsert_env_key(
+            env_path.to_str().unwrap().to_string(),
+            dir.path().to_str().unwrap().to_string(),
+            "DB_HOST".to_string(),
+            "localhost".to_string(),
+            false,
+        ).unwrap();
+
+        assert_eq!(
+            result.updated_content, content,
+            "Upserting the same value should produce byte-identical output"
+        );
+    }
+
+    #[test]
+    fn round_trip_upsert_file_on_disk() {
+        let (dir, env_path) = create_temp_project();
+        let content = "# App config\nAPP_NAME=Drift\nAPP_ENV=local\n\n# Database\nDB_HOST=127.0.0.1\nDB_PORT=3306\n";
+        fs::write(&env_path, content).unwrap();
+
+        // Upsert the same value — file on disk should be identical
+        let _ = upsert_env_key(
+            env_path.to_str().unwrap().to_string(),
+            dir.path().to_str().unwrap().to_string(),
+            "APP_NAME".to_string(),
+            "Drift".to_string(),
+            false,
+        ).unwrap();
+
+        let on_disk = fs::read_to_string(&env_path).unwrap();
+        assert_eq!(on_disk, content, "File on disk must be byte-identical after no-op upsert");
     }
 }
 
