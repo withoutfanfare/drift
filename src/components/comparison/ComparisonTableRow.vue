@@ -4,6 +4,7 @@ import type { EnvSet, KeyAnalysisRow, DriftWarning } from "../../types";
 import { useMasking } from "../../composables/useMasking";
 import { useSecretDetection } from "../../composables/useSecretDetection";
 import { useChangeHistory } from "../../composables/useChangeHistory";
+import { useDependencies } from "../../composables/useDependencies";
 import StatusBadge from "./StatusBadge.vue";
 import { SButton as BaseButton } from "@stuntrocket/ui";
 
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 const { maskValue, shouldMask, isSensitiveKey, MASK_PLACEHOLDER } = useMasking();
 const { detectSecret } = useSecretDetection();
 const { getKeyHistory, formatRelativeTime } = useChangeHistory();
+const { getRelatedKeys, getDependencies, hasRelatedKeys } = useDependencies();
 const revealedCells = ref<Set<string>>(new Set());
 const editValue = ref("");
 const showHistory = ref(false);
@@ -84,6 +86,10 @@ function getSecretWarning(setId: string): string | null {
 
 // Change history for this key
 const keyHistory = computed(() => getKeyHistory(props.row.key));
+
+// Related variables (dependency annotations)
+const relatedKeys = computed(() => getRelatedKeys(props.row.key));
+const keyDependencies = computed(() => getDependencies(props.row.key));
 
 function toggleReveal(cellId: string) {
   const next = new Set(revealedCells.value);
@@ -166,6 +172,18 @@ function cellIsMasked(setId: string): boolean {
         <svg v-if="isSensitiveKey(row.key)" class="h-3 w-3 shrink-0 text-warning/60" viewBox="0 0 24 24" fill="none" aria-hidden="true" title="Sensitive key">
           <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.8"/>
           <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <!-- Dependency link indicator -->
+        <svg
+          v-if="hasRelatedKeys(row.key)"
+          class="h-3 w-3 shrink-0 text-blue-400/50"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+          :title="`Related: ${relatedKeys.join(', ')}`"
+        >
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </span>
     </td>
@@ -291,6 +309,27 @@ function cellIsMasked(setId: string): boolean {
             <span v-for="(line, i) in c.above" :key="i" class="block">{{ line }}</span>
             <span v-if="c.inline" class="block italic">{{ c.inline }}</span>
           </div>
+        </div>
+
+        <!-- Dependency annotations -->
+        <div v-if="relatedKeys.length > 0" class="rounded-[var(--radius-md)] bg-blue-500/5 border border-blue-500/10 px-3 py-2">
+          <p class="text-[11px] font-medium text-blue-400/80 mb-1">Related variables</p>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="relKey in relatedKeys"
+              :key="relKey"
+              class="inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-blue-500/10 px-1.5 py-0.5 text-[11px] font-mono text-blue-400/70"
+            >
+              <svg v-if="keyDependencies.includes(relKey)" class="h-2.5 w-2.5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <svg v-else class="h-2.5 w-2.5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              {{ relKey }}
+            </span>
+          </div>
+          <p class="text-[10px] text-text-muted mt-1">Changes to this variable may require updating related variables.</p>
         </div>
 
         <!-- Drift warnings -->

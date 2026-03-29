@@ -14,6 +14,8 @@ import { useGitTracking } from "../../composables/useGitTracking";
 import { useKeyboardShortcuts } from "../../composables/useKeyboardShortcuts";
 import { useDebouncedComputed } from "../../composables/useDebounce";
 import { upsertEnvKeyInRaw } from "../../composables/useEnvMutations";
+import { useResolutionSummary } from "../../composables/useResolutionSummary";
+import { useColumnOrder } from "../../composables/useColumnOrder";
 import { buildMissingTemplate, buildMergedTemplate, buildPatchPreview, getMissingEntries } from "../../composables/useTemplates";
 import { appendMissingEnvKeys, upsertEnvKey, writeEnvFile, writeEnvExample, rotateBackups } from "../../composables/useTauriCommands";
 import { asFilter } from "../../composables/useRoles";
@@ -40,6 +42,8 @@ const { analyseValueDrift } = useDriftAnalysis();
 const { generateEnvExample } = useEnvExample();
 const { hasSchema, schemaIssues, schemaErrorCount, schemaWarningCount, loadSchema, validateValues, generateSchema } = useEnvSchema();
 const { uncommittedCount, hasUncommittedChanges, checkGitStatus, isFileUncommitted } = useGitTracking();
+const { hasSessionChanges, generateMarkdown } = useResolutionSummary();
+const { orderedSets, moveColumn, resetOrder, hasCustomOrder } = useColumnOrder(() => props.sets);
 
 const { activeProject, activeProjectId } = useProjects();
 
@@ -461,6 +465,21 @@ function onCopyValueToEnv(targetId: string, key: string, value: string) {
   onApplyMemory(targetId, key, value);
 }
 
+async function onCopySummary() {
+  const markdown = generateMarkdown();
+  if (!markdown) {
+    setStatus("No changes to summarise — make some edits first.");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(markdown);
+    setStatus("Resolution summary copied to clipboard.");
+    log("info", "Copied drift resolution summary to clipboard");
+  } catch {
+    setStatus("Clipboard access denied — copy failed.");
+  }
+}
+
 async function onSaveFile(setId: string) {
   const set = props.sets.find((s) => s.id === setId);
   if (!set?.filePath || savingSetId.value) return;
@@ -514,6 +533,7 @@ async function onSaveFile(setId: string) {
         <SButton variant="primary" size="sm" @click="onCopyMissing">Copy missing</SButton>
         <SButton variant="secondary" size="sm" @click="onCopyMerged">Export .env</SButton>
         <SButton variant="secondary" size="sm" @click="onGenerateEnvExample">.env.example</SButton>
+        <SButton v-if="hasSessionChanges" variant="secondary" size="sm" @click="onCopySummary" title="Copy Markdown summary of this session's changes">Summary</SButton>
         <SButton v-if="!hasSchema" variant="secondary" size="sm" @click="onGenerateSchema" title="Generate .env.schema.json from current values">Schema</SButton>
         <SButton
           variant="secondary"
@@ -523,6 +543,18 @@ async function onSaveFile(setId: string) {
         >
           <svg class="h-3.5 w-3.5" :class="groupingEnabled ? 'text-accent' : ''" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </SButton>
+        <SButton
+          v-if="hasCustomOrder"
+          variant="ghost"
+          size="sm"
+          @click="resetOrder"
+          title="Reset column order to default"
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </SButton>
         <SButton v-if="targetSet?.filePath" variant="danger" size="sm" @click="requestPatch">
@@ -678,7 +710,7 @@ async function onSaveFile(setId: string) {
 
     <ComparisonTable
       :rows="displayRows"
-      :sets="sets"
+      :sets="orderedSets"
       :reference-set-id="referenceSetId"
       :session-edits="sessionEdits"
       :grouping-enabled="groupingEnabled"
@@ -691,6 +723,7 @@ async function onSaveFile(setId: string) {
       @copy-value="onCopyValueToClipboard"
       @copy-to-env="onCopyValueToEnv"
       @update:focused-row-index="focusedRowIndex = $event"
+      @move-column="moveColumn"
     />
 
     <!-- Per-file save bar -->

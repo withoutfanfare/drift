@@ -339,6 +339,7 @@ Desktop app for managing Laravel `.env` configuration drift across projects and 
   - "Install now" and "Remind me later" options; deferred updates install on next launch
   - Current version and last update check timestamp visible in settings
   - Update progress indicator during download and installation
+- **Autonomous cycle note (2026-03-29):** Skipped — requires external infrastructure (update endpoint server, code signing key pair) that does not exist yet. The plugin installation, UI components, and update flow logic can be implemented, but cannot be verified end-to-end without the infrastructure. Recommend Danny sets up the update endpoint and signing keys first, then this item can be completed in a subsequent cycle.
 
 ### [UX/UI] Add environment variable dependency annotations showing which variables reference each other
 - **Priority:** P3 (nice-to-have)
