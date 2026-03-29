@@ -21,9 +21,10 @@ import EmptyState from "./components/layout/EmptyState.vue";
 import FileChangeToast from "./components/layout/FileChangeToast.vue";
 import { SButton } from "@stuntrocket/ui";
 import BackupBrowser from "./components/project/BackupBrowser.vue";
+import MultiProjectDashboard from "./components/project/MultiProjectDashboard.vue";
 
 const { projects, activeProjectId, activeProject, saveActiveProjectId } = useProjects();
-const { currentSets, addOrReplaceSet } = useEnvSets();
+const { envSets, currentSets, addOrReplaceSet } = useEnvSets();
 const { setStatus } = useStatus();
 const { log } = useActivityLog();
 
@@ -89,7 +90,7 @@ function dismissFileChanges() {
 
 function loadPage(): AppPage {
   const stored = localStorage.getItem(PAGE_STORAGE_KEY);
-  if (stored === "projects" || stored === "help") return stored;
+  if (stored === "projects" || stored === "help" || stored === "overview") return stored;
   return "dashboard";
 }
 
@@ -144,7 +145,7 @@ function onProjectChange(id: string) {
     <!-- Mobile navigation (hidden on desktop) -->
     <div class="hidden max-[1024px]:flex gap-2 mb-4">
       <button
-        v-for="navPage in (['dashboard', 'projects', 'help'] as AppPage[])"
+        v-for="navPage in (['dashboard', 'overview', 'projects', 'help'] as AppPage[])"
         :key="navPage"
         class="focus-ring rounded-[var(--radius-md)] px-3 py-1.5 text-[13px] capitalize transition-colors"
         :class="page === navPage
@@ -153,7 +154,7 @@ function onProjectChange(id: string) {
         :aria-current="page === navPage ? 'page' : undefined"
         @click="openPage(navPage)"
       >
-        {{ navPage === 'help' ? 'Help' : navPage === 'projects' ? 'Projects' : 'Dashboard' }}
+        {{ navPage === 'help' ? 'Help' : navPage === 'projects' ? 'Projects' : navPage === 'overview' ? 'Overview' : 'Dashboard' }}
       </button>
     </div>
 
@@ -208,6 +209,19 @@ function onProjectChange(id: string) {
             :analysis="analysis"
           />
         </template>
+      </template>
+
+      <template v-else-if="page === 'overview'">
+        <PageHeader
+          eyebrow="All projects"
+          title="Multi-project overview"
+          description="Aggregate drift status across all registered projects — see which ones need attention at a glance."
+        />
+        <MultiProjectDashboard
+          :projects="projects"
+          :env-sets="envSets"
+          @select-project="onSelectProject"
+        />
       </template>
 
       <template v-else-if="page === 'projects'">
