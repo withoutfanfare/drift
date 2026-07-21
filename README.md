@@ -1,5 +1,9 @@
 # Drift
 
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" alt="Drift app icon" width="144" height="144">
+</p>
+
 A Tauri 2 desktop app for Laravel developers to manage `.env` file sets across projects, detect environment drift, and safely patch missing keys. Built with Vue 3 + Tailwind CSS 4 on the frontend and Rust on the backend, styled with the @stuntrocket/ui design system.
 
 ## Features
