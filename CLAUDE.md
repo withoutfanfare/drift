@@ -15,7 +15,7 @@ npm run build              # vue-tsc type check + Vite production build (fronten
 npm run tauri build        # Full production build (frontend + Rust binary)
 ```
 
-No test framework is configured. No linter/formatter beyond TypeScript strict mode + vue-tsc.
+Tests use Vitest (run via `npx vitest`; no npm script defined yet) — see `src/composables/__tests__/`. No linter/formatter beyond TypeScript strict mode + vue-tsc.
 
 ## Architecture
 
@@ -25,18 +25,7 @@ Single-page Vue 3 app using Composition API with `<script setup>`. Entry point: 
 
 **Types** (`src/types/index.ts`): `ProjectProfile`, `EnvSet`, `KeyAnalysisRow`, `PersistedSet`, `PersistedProject`, `ScannedEnvFile`, `MissingEntry`, `PatchResult`, `UpsertResult`, `LocalUpsertResult`.
 
-**Composables** (`src/composables/`):
-- `useProjects` — reactive project CRUD + localStorage persistence (`edm.projects.v1`, `edm.activeProject.v1`)
-- `useEnvSets` — reactive env set management + localStorage persistence (`edm.envSets.v1`)
-- `useAnalysis` — drift analysis, unsafe evaluation, production-like detection
-- `useFilters` — reactive filter/search state
-- `useEnvParser` — pure-function env file parsing utilities
-- `useTemplates` — missing/merged template generation
-- `useRoles` — role detection, sorting, type guards
-- `useEnvMutations` — in-memory env key upsert
-- `useTauriCommands` — typed wrappers for Tauri IPC commands
-- `useStatus` — reactive status message with auto-clear
-- `useSampleData` — sample data and baseline set generation
+**Composables** (`src/composables/`) — env parsing/mutation, drift analysis, git tracking, file watching, secret detection/masking, backups, and UI state (filtering, grouping, keyboard shortcuts). See the directory for the full list.
 
 **Components** (`src/components/`):
 - `layout/` — AppShell (titlebar + container), AmbientBackground (animated blobs)
@@ -49,11 +38,7 @@ Single-page Vue 3 app using Composition API with `<script setup>`. Entry point: 
 
 ### Backend (`src-tauri/src/lib.rs`)
 
-Three Tauri commands exposed to the frontend:
-
-- `scan_env_files(project_root)` — Recursively finds `.env*` files (max depth 8, skips node_modules/vendor/.git/etc., 1.5MB file cap)
-- `append_missing_env_keys(target_path, entries, create_backup)` — Appends only missing keys to a file, creates timestamped `.bak` backups
-- `upsert_env_key(target_path, key, value, create_backup)` — Updates existing key or appends new one
+17 Tauri commands as of Aug 2026 (see the `#[tauri::command]` functions in `src-tauri/src/lib.rs`), covering env scanning/writing, backups & rotation, schema validation, git status, and unused-key detection.
 
 All Rust structs use `#[serde(rename_all = "camelCase")]` for JSON interop with the frontend.
 
@@ -67,11 +52,7 @@ All Rust structs use `#[serde(rename_all = "camelCase")]` for JSON interop with 
 
 - Tauri 2.x APIs (not Tauri 1.x) — commands return `Result<T, String>`
 - Rust serde structs use camelCase for JSON field names
-- Vue 3 Composition API with `<script setup lang="ts">` — no Options API
-- Tailwind CSS 4 with CSS-first `@theme {}` config — no `tailwind.config.js`
 - @stuntrocket/ui design system: dark mode, glassmorphic cards, accent blue (#60A5FA)
 - Composables use module-level `ref()` for singleton state (no provide/inject needed)
-- Safe file operations: always validate paths, parse before write, backup before mutate
 - localStorage is the only persistence layer (no database)
-- Vite dev server runs on port 1420
 - App identifier: `com.dannyharding.drift`
