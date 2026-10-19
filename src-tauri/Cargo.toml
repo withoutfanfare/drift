@@ -1,6 +1,7 @@
 [package]
 name = "env-drift-manager"
 version = "0.1.0"
+license = "MIT"
 description = "Drift desktop app"
 authors = ["you"]
 edition = "2021"

@@ -1,5 +1,7 @@
 # Drift
 
+[![CI](https://github.com/withoutfanfare/drift/actions/workflows/ci.yml/badge.svg)](https://github.com/withoutfanfare/drift/actions/workflows/ci.yml)
+
 <p align="center">
   <img src="src-tauri/icons/128x128@2x.png" alt="Drift app icon" width="144" height="144">
 </p>
@@ -116,6 +118,10 @@ All data is persisted in `localStorage` under the following keys:
 - `edm.activeProject.v1` — currently active project
 - `edm.envSets.v1` — env set definitions including raw content and file paths
 
+## How this was built
+
+Drift was built with the help of AI coding agents, mainly Claude Code and Codex. Every change was reviewed and tested by Danny Harding before it was merged.
+
 ## Licence
 
-Private.
+MIT. See [LICENSE](LICENSE).
